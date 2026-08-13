@@ -1,4 +1,4 @@
-# Pico 简历数据复现说明
+# RepoPilot 简历数据复现说明
 
 本目录用于复现这段简历描述里的核心数据。复现对象是 main 分支的本地 agent harness 指标，不是线上业务数据。
 
@@ -10,7 +10,7 @@
 | `context-ablation-v2.json` | 长上下文治理对照实验 |
 | `memory-ablation-v2.json` | 结构化记忆对照实验 |
 | `recovery-ablation-v2.json` | checkpoint / resume 恢复实验 |
-| `pico-benchmark-core-report.md` | 自动生成的核心 benchmark 汇总 |
+| `repopilot-benchmark-core-report.md` | 自动生成的核心 benchmark 汇总 |
 
 说明：本归档只提交可复核的 JSON/Markdown 结果，不提交临时 workspace 副本；每题的摘要、verifier、状态和运行工件字段已经写入 `harness-regression-v2.json`。
 
@@ -21,8 +21,8 @@
 ```bash
 uv run python - <<'PY'
 from pathlib import Path
-from pico.evaluation.evaluator import run_harness_regression_v2
-from pico.evaluation.metrics import (
+from repopilot.evaluation.evaluator import run_harness_regression_v2
+from repopilot.evaluation.metrics import (
     run_context_ablation_v2,
     run_memory_ablation_v2,
     run_recovery_ablation_v2,
@@ -33,13 +33,13 @@ out = Path("benchmarks/results/main-resume-repro-2026-06-07")
 run_harness_regression_v2(
     benchmark_path=Path("benchmarks/coding_tasks.json"),
     artifact_path=out / "harness-regression-v2.json",
-    workspace_root=Path("/tmp/pico-main-resume-workspaces"),
+    workspace_root=Path("/tmp/repopilot-main-resume-workspaces"),
 )
 run_context_ablation_v2(out / "context-ablation-v2.json", repetitions=5)
 run_memory_ablation_v2(out / "memory-ablation-v2.json", repetitions=5)
 run_recovery_ablation_v2(out / "recovery-ablation-v2.json", repetitions=3)
 write_benchmark_core_report(
-    report_path=out / "pico-benchmark-core-report.md",
+    report_path=out / "repopilot-benchmark-core-report.md",
     harness_artifact_path=out / "harness-regression-v2.json",
     context_artifact_path=out / "context-ablation-v2.json",
     memory_artifact_path=out / "memory-ablation-v2.json",
@@ -61,8 +61,8 @@ PY
 | 数字 | 怎么来的 | 复现/查看方式 |
 | --- | --- | --- |
 | 2 类模型后端 | 这是早期 `resume-metrics.md` 的 provider 实验口径，不等于当前 main 所有可配置 provider 数。当前 main 已经支持更多 provider 配置路径。 | 早期本地实验快照中的 `Model backends: 2` |
-| 7 类工具 | `pico/tools.py` 里 6 个基础工具，加上 `delegate`，总共 7 个可暴露工具。 | `BASE_TOOL_SPECS` 有 6 个：`list_files/read_file/search/run_shell/write_file/patch_file`，`legal_tool_names()` 额外加入 `delegate` |
-| 3 类运行工件 | 每次 run 固定落盘 `task_state.json`、`trace.jsonl`、`report.json`。 | `pico/run_store.py` 的 `task_state_path()`、`trace_path()`、`report_path()` |
+| 7 类工具 | `repopilot/tools.py` 里 6 个基础工具，加上 `delegate`，总共 7 个可暴露工具。 | `BASE_TOOL_SPECS` 有 6 个：`list_files/read_file/search/run_shell/write_file/patch_file`，`legal_tool_names()` 额外加入 `delegate` |
+| 3 类运行工件 | 每次 run 固定落盘 `task_state.json`、`trace.jsonl`、`report.json`。 | `repopilot/run_store.py` 的 `task_state_path()`、`trace_path()`、`report_path()` |
 
 面试解释：
 
@@ -195,7 +195,7 @@ PY
 | 上下文治理 | `context-ablation-v2.json` |
 | 记忆收益 | `memory-ablation-v2.json` |
 | 恢复正确性 | `recovery-ablation-v2.json` |
-| 汇总报告 | `pico-benchmark-core-report.md` |
+| 汇总报告 | `repopilot-benchmark-core-report.md` |
 
 这层的重点不是一个总分，而是把不同问题分开测：runtime 合同稳定性、上下文模块收益、记忆模块收益、恢复边界正确性分别有独立证据。
 

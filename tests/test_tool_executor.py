@@ -1,12 +1,12 @@
-from pico import FakeModelClient, Pico, SessionStore, WorkspaceContext
-from pico.tool_executor import ToolExecutor, ToolExecutionResult
+from repopilot import FakeModelClient, RepoPilot, SessionStore, WorkspaceContext
+from repopilot.tool_executor import ToolExecutor, ToolExecutionResult
 
 
 def build_agent(tmp_path):
     (tmp_path / "README.md").write_text("demo\n", encoding="utf-8")
     workspace = WorkspaceContext.build(tmp_path)
-    store = SessionStore(tmp_path / ".pico" / "sessions")
-    return Pico(
+    store = SessionStore(tmp_path / ".repopilot" / "sessions")
+    return RepoPilot(
         model_client=FakeModelClient([]),
         workspace=workspace,
         session_store=store,
@@ -26,7 +26,7 @@ def test_tool_executor_returns_content_and_metadata_without_side_channel(tmp_pat
     assert result.metadata["workspace_changed"] is False
 
 
-def test_pico_run_tool_keeps_compatibility_metadata(tmp_path):
+def test_repopilot_run_tool_keeps_compatibility_metadata(tmp_path):
     agent = build_agent(tmp_path)
 
     content = agent.run_tool("read_file", {"path": "README.md", "start": 1, "end": 1})

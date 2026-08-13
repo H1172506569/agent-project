@@ -1,8 +1,10 @@
 import hashlib
 import json
 import locale as locale_module
+import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -10,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 from ..features import memory as memorylib
 from ..providers.clients import FakeModelClient
-from ..runtime import Pico, SessionStore
+from ..runtime import RepoPilot, SessionStore
 from ..run_store import RunStore
 from ..task_state import STOP_REASON_FINAL_ANSWER_RETURNED
 from ..tools import legal_tool_names
@@ -146,6 +148,24 @@ def _scripted_outputs_for_task(task):
     if outputs is None:
         raise ValueError(f"no scripted model outputs for benchmark task: {task['id']}")
     return list(outputs)
+
+
+def _run_verifier(command, cwd):
+    match = re.fullmatch(r"""python3?\s+-c\s+(?P<quote>['"])(?P<code>.*)(?P=quote)""", str(command), re.S)
+    if match:
+        return subprocess.run(
+            [sys.executable, "-c", match.group("code")],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+    return subprocess.run(
+        command,
+        cwd=cwd,
+        shell=True,
+        capture_output=True,
+        text=True,
+    )
 
 
 def _fixture_snapshot_id(fixture_paths):
@@ -390,7 +410,7 @@ class BenchmarkEvaluator:
         self.benchmark_path = Path(benchmark_path)
         self.artifact_path = Path(artifact_path)
         self.workspace_root = Path(workspace_root) if workspace_root is not None else Path(
-            tempfile.mkdtemp(prefix="pico-benchmark-")
+            tempfile.mkdtemp(prefix="repopilot-benchmark-")
         )
         self.model_name = model_name
         self.model_version = model_version
@@ -453,13 +473,13 @@ class BenchmarkEvaluator:
             fixture_copy_root,
             repo_root_override=fixture_copy_root,
         )
-        session_store = SessionStore(fixture_copy_root / ".pico" / "sessions")
-        run_store = RunStore(fixture_copy_root / ".pico" / "runs")
+        session_store = SessionStore(fixture_copy_root / ".repopilot" / "sessions")
+        run_store = RunStore(fixture_copy_root / ".repopilot" / "runs")
         if self.model_client_factory is not None:
             model_client = self.model_client_factory(task=task, workspace=workspace)
         else:
             model_client = FakeModelClient(_scripted_outputs_for_task(task))
-        agent = Pico(
+        agent = RepoPilot(
             model_client=model_client,
             workspace=workspace,
             session_store=session_store,
@@ -489,13 +509,7 @@ class BenchmarkEvaluator:
         expected_artifact_exists = artifact_file.exists()
         artifact_digest = _digest_file(artifact_file) if expected_artifact_exists else ""
 
-        verifier = subprocess.run(
-            task["verifier"],
-            cwd=fixture_copy_root,
-            shell=True,
-            capture_output=True,
-            text=True,
-        )
+        verifier = _run_verifier(task["verifier"], cwd=fixture_copy_root)
 
         within_budget = task_state.tool_steps <= int(task["step_budget"])
         verifier_passed = verifier.returncode == 0

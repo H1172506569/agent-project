@@ -1,8 +1,8 @@
 class FakeModelClient:
     """Deterministic model for learning and tests.
 
-    Main Pico uses real provider clients behind the same `complete()` shape.
-    mini-pico defaults to this fake client so the control loop is visible
+    Main RepoPilot uses real provider clients behind the same `complete()` shape.
+    mini-repopilot defaults to this fake client so the control loop is visible
     without API keys or network calls.
     """
 
@@ -21,5 +21,5 @@ class FakeModelClient:
                 raise RuntimeError("fake model ran out of outputs")
             return self.outputs.pop(0)
         if "Tool result:" in prompt:
-            return "<final>mini-pico read the workspace through a tool and returned a final answer.</final>"
+            return "<final>mini-repopilot read the workspace through a tool and returned a final answer.</final>"
         return '<tool>{"name":"read_file","args":{"path":"README.md","start":1,"end":40}}</tool>'

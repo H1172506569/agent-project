@@ -1,6 +1,6 @@
 from pathlib import Path
 
-IGNORED_NAMES = {".git", ".mini-pico", "__pycache__", ".pytest_cache", ".ruff_cache", ".venv", "venv"}
+IGNORED_NAMES = {".git", ".mini-repopilot", "__pycache__", ".pytest_cache", ".ruff_cache", ".venv", "venv"}
 
 
 class Workspace:

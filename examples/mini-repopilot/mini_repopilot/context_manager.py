@@ -7,7 +7,7 @@ class ContextManager:
 
     def build(self, user_message):
         history = _render_history(self.agent.history)
-        prompt = f"""You are mini-pico, a teaching-sized local coding agent.
+        prompt = f"""You are mini-repopilot, a teaching-sized local coding agent.
 
 Return exactly one of these forms:
 <tool>{{"name":"read_file","args":{{"path":"README.md","start":1,"end":40}}}}</tool>

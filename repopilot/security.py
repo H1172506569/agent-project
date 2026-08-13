@@ -88,12 +88,17 @@ def redact_artifact(value, key=None, env=None, secret_env_names=None):
 
 
 def shell_env(env=None, allowlist=(), root="."):
+    use_process_env = env is None
     env = os.environ if env is None else env
     filtered = {
         name: env[name]
         for name in allowlist
         if name in env
     }
+    if os.name == "nt" and use_process_env:
+        filtered.setdefault("ComSpec", r"C:\Windows\System32\cmd.exe")
+        filtered.setdefault("SystemRoot", r"C:\Windows")
+        filtered.setdefault("WINDIR", r"C:\Windows")
     filtered["PWD"] = str(root)
     if "PATH" not in filtered and env.get("PATH"):
         filtered["PATH"] = env["PATH"]

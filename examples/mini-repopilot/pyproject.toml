@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mini-pico"
+name = "mini-repopilot"
 version = "0.1.0"
-description = "Teaching-sized Pico agent harness"
+description = "Teaching-sized RepoPilot agent harness"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.scripts]
-mini-pico = "mini_pico.cli:main"
+mini-repopilot = "mini_repopilot.cli:main"
 
 [dependency-groups]
 dev = [
@@ -19,7 +19,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["mini_pico*"]
+include = ["mini_repopilot*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

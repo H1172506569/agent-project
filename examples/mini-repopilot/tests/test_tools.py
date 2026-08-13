@@ -1,5 +1,5 @@
-from mini_pico.tool_executor import ToolExecutor
-from mini_pico.workspace import Workspace
+from mini_repopilot.tool_executor import ToolExecutor
+from mini_repopilot.workspace import Workspace
 
 
 def test_tools_read_search_list_and_reject_path_escape(tmp_path):

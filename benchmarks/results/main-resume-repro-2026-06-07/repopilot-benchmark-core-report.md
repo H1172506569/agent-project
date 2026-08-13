@@ -1,4 +1,4 @@
-# Pico Benchmark Core Report
+# RepoPilot Benchmark Core Report
 
 这轮 benchmark 只收缩到 Harness regression、context ablation、working memory ablation 和 recovery ablation 四层，不把 provider、run aggregation 或 durable memory 的别的结论揉进来。
 

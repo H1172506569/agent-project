@@ -3,14 +3,15 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pico"
+name = "repopilot"
 version = "0.1.0"
 description = "Small local coding agent for DeepSeek, OpenAI-compatible, Anthropic-compatible, and Ollama models"
+authors = [{ name = "Hu Xin" }]
 requires-python = ">=3.10"
 dependencies = []
 
 [project.scripts]
-pico = "pico.cli:main"
+repopilot = "repopilot.cli:main"
 
 [dependency-groups]
 dev = [
@@ -19,7 +20,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["pico*"]
+include = ["repopilot*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

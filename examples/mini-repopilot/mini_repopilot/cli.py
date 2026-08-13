@@ -1,14 +1,14 @@
 import argparse
 
 from .providers import FakeModelClient
-from .runtime import Pico
+from .runtime import RepoPilot
 from .state import RunStore
 from .workspace import Workspace
 
 
 def build_arg_parser():
-    parser = argparse.ArgumentParser(description="Teaching-sized Pico agent harness.")
-    parser.add_argument("prompt", nargs="*", help="One-shot prompt. If omitted, mini-pico starts a small REPL.")
+    parser = argparse.ArgumentParser(description="Teaching-sized RepoPilot agent harness.")
+    parser.add_argument("prompt", nargs="*", help="One-shot prompt. If omitted, mini-repopilot starts a small REPL.")
     parser.add_argument("--cwd", default=".", help="Workspace directory.")
     parser.add_argument("--approval", choices=("auto", "never"), default="auto", help="Whether risky tools are allowed.")
     parser.add_argument("--max-steps", type=int, default=4, help="Maximum tool/model iterations.")
@@ -18,8 +18,8 @@ def build_arg_parser():
 
 def build_agent(args):
     workspace = Workspace.build(args.cwd)
-    run_store = RunStore(workspace.root / ".mini-pico" / "runs")
-    return Pico(
+    run_store = RunStore(workspace.root / ".mini-repopilot" / "runs")
+    return RepoPilot(
         model_client=FakeModelClient(),
         workspace=workspace,
         run_store=run_store,
@@ -39,7 +39,7 @@ def main(argv=None):
 
     while True:
         try:
-            user_input = input("mini-pico> ").strip()
+            user_input = input("mini-repopilot> ").strip()
         except (EOFError, KeyboardInterrupt):
             print("")
             return 0

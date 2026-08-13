@@ -1,6 +1,6 @@
 # Agent Harness v1 Overview
 
-Agent Harness v1 is Pico's current runtime shape: a local control loop around a model, repository context, constrained tools, task state, memory, and auditable run artifacts.
+Agent Harness v1 is RepoPilot's current runtime shape: a local control loop around a model, repository context, constrained tools, task state, memory, and auditable run artifacts.
 
 ## Runtime Flow
 

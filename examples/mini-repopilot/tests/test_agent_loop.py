@@ -1,13 +1,13 @@
 import json
 
-from mini_pico import FakeModelClient, Pico, RunStore, Workspace
+from mini_repopilot import FakeModelClient, RepoPilot, RunStore, Workspace
 
 
 def test_agent_loop_runs_tool_then_final_and_writes_evidence(tmp_path):
     (tmp_path / "README.md").write_text("alpha\nbeta\n", encoding="utf-8")
     workspace = Workspace.build(tmp_path)
-    run_store = RunStore(tmp_path / ".mini-pico" / "runs")
-    agent = Pico(
+    run_store = RunStore(tmp_path / ".mini-repopilot" / "runs")
+    agent = RepoPilot(
         model_client=FakeModelClient(
             [
                 '<tool>{"name":"read_file","args":{"path":"README.md","start":1,"end":1}}</tool>',

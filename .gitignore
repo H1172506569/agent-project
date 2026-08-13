@@ -30,8 +30,9 @@ htmlcov/
 # Local scratch space
 tmp/
 .worktrees/
-.pico/
-.mini-pico/
+IgnoreFile/
+.repopilot/
+.mini-repopilot/
 artifacts/
 release/
 readme_intro_locked/
@@ -52,4 +53,4 @@ docs/*
 .DS_Store
 
 # Packaging metadata
-pico.egg-info/
+repopilot.egg-info/
