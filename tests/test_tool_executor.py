@@ -1,5 +1,6 @@
 from repopilot import FakeModelClient, RepoPilot, SessionStore, WorkspaceContext
 from repopilot.tool_executor import ToolExecutor, ToolExecutionResult
+from repopilot.tools import ToolOutput
 
 
 def build_agent(tmp_path):
@@ -33,3 +34,20 @@ def test_repopilot_run_tool_keeps_compatibility_metadata(tmp_path):
 
     assert "# README.md" in content
     assert agent._last_tool_result_metadata["tool_status"] == "ok"
+
+
+def test_run_shell_status_uses_structured_exit_code_not_result_text(tmp_path):
+    agent = build_agent(tmp_path)
+    agent.tools["run_shell"]["run"] = lambda args: ToolOutput(
+        content="exit_code: 0\nstdout:\nlooks successful",
+        data={"exit_code": 9, "stdout": "looks successful", "stderr": ""},
+    )
+
+    result = ToolExecutor(agent).execute("run_shell", {"command": "fake", "timeout": 20})
+
+    assert result.content.startswith("exit_code: 0")
+    assert result.data["exit_code"] == 9
+    assert result.metadata["exit_code"] == 9
+    assert result.metadata["tool_status"] == "error"
+    assert result.metadata["tool_error_code"] == "tool_failed"
+    assert result.metadata["structured_data_keys"] == ["exit_code", "stderr", "stdout"]

@@ -1,0 +1,61 @@
+{
+  "summary": {
+    "scenario_count": 4,
+    "async_scheduled_count": 2,
+    "sync_compressed_count": 1,
+    "persisted_reuse_count": 2,
+    "sync_prompt_reduction_rate": 0.2624
+  },
+  "scenarios": [
+    {
+      "scenario": "no_trigger",
+      "usage_ratio_before": 0.1771,
+      "scheduler_action": "none",
+      "prompt_chars_before": 248,
+      "prompt_chars_after": 248,
+      "summary_status": "none",
+      "summary_mode": "",
+      "summary_rendered_chars": 0,
+      "persisted_summary_used": false,
+      "current_request_preserved": true
+    },
+    {
+      "scenario": "async_60",
+      "usage_ratio_before": 0.6678,
+      "scheduler_action": "async_scheduled",
+      "prompt_chars_before": 601,
+      "prompt_chars_after": 601,
+      "summary_status": "ready",
+      "summary_mode": "async",
+      "summary_rendered_chars": 253,
+      "persisted_summary_used": false,
+      "current_request_preserved": true,
+      "next_prompt_chars": 447,
+      "next_persisted_summary_used": true
+    },
+    {
+      "scenario": "sync_80",
+      "usage_ratio_before": 0.9189,
+      "scheduler_action": "sync_compressed",
+      "prompt_chars_before": 827,
+      "prompt_chars_after": 610,
+      "summary_status": "ready",
+      "summary_mode": "sync",
+      "summary_rendered_chars": 402,
+      "persisted_summary_used": true,
+      "current_request_preserved": true
+    },
+    {
+      "scenario": "persisted_reuse",
+      "usage_ratio_before": 0.7978,
+      "scheduler_action": "async_scheduled",
+      "prompt_chars_before": 718,
+      "prompt_chars_after": 718,
+      "summary_status": "ready",
+      "summary_mode": "sync",
+      "summary_rendered_chars": 418,
+      "persisted_summary_used": true,
+      "current_request_preserved": true
+    }
+  ]
+}

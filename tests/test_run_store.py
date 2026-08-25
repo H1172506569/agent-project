@@ -1,5 +1,6 @@
 import json
 
+from repopilot.event_log import event_log_metrics, project_history, project_trace
 from repopilot.run_store import RunStore
 from repopilot.task_state import STOP_REASON_FINAL_ANSWER_RETURNED, TaskState
 
@@ -64,3 +65,25 @@ def test_run_store_tolerates_missing_final_report(tmp_path):
 
     assert store.trace_path(state.run_id).exists()
     assert not store.report_path(state.run_id).exists()
+
+
+def test_run_store_appends_event_log_and_projects_views(tmp_path):
+    store = RunStore(tmp_path / ".repopilot" / "runs")
+    state = TaskState.create(run_id="run_005", task_id="task_005", user_request="Project event log.")
+    store.start_run(state)
+
+    store.append_event(state, {"source": "history", "event": "history_recorded", "history": {"role": "user", "content": "hello"}})
+    store.append_event(state, {"source": "trace", "event": "run_started", "created_at": "2026-04-07T00:00:00+00:00"})
+    store.append_event(state, {"source": "memory", "event": "memory_updated", "tool_name": "read_file"})
+
+    events = store.load_events(state.run_id)
+
+    assert project_history(events) == [{"role": "user", "content": "hello"}]
+    assert project_trace(events) == [{"event": "run_started", "created_at": "2026-04-07T00:00:00+00:00"}]
+    assert event_log_metrics(events) == {
+        "event_count": 3,
+        "trace_event_count": 1,
+        "history_event_count": 1,
+        "memory_event_count": 1,
+        "structured_tool_result_count": 0,
+    }

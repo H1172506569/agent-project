@@ -1,0 +1,203 @@
+{
+  "groups": [
+    {
+      "group": "section_clipping_memory_on",
+      "context_strategy": "section_clipping",
+      "memory_enabled": true,
+      "prompt_chars": 825,
+      "prompt_over_budget": false,
+      "history_rendered_chars": 543,
+      "active_round_count": 0,
+      "compressed_round_count": 0,
+      "retained_failed_tool_count": 0,
+      "retained_file_path_count": 0,
+      "compression_failure_count": 0,
+      "repeated_reads": 3,
+      "task_pass_count": 2,
+      "task_count": 4,
+      "task_pass_rate": 0.5,
+      "task_results": [
+        {
+          "task": "recent_result",
+          "passed": true,
+          "missing_needles": 0,
+          "missing": []
+        },
+        {
+          "task": "old_path",
+          "passed": false,
+          "missing_needles": 1,
+          "missing": [
+            "src/legacy_config.py"
+          ]
+        },
+        {
+          "task": "failed_status",
+          "passed": false,
+          "missing_needles": 2,
+          "missing": [
+            "status=error",
+            "exit_code=1"
+          ]
+        },
+        {
+          "task": "memory_fact",
+          "passed": true,
+          "missing_needles": 0,
+          "missing": []
+        }
+      ]
+    },
+    {
+      "group": "section_clipping_memory_off",
+      "context_strategy": "section_clipping",
+      "memory_enabled": false,
+      "prompt_chars": 691,
+      "prompt_over_budget": false,
+      "history_rendered_chars": 543,
+      "active_round_count": 0,
+      "compressed_round_count": 0,
+      "retained_failed_tool_count": 0,
+      "retained_file_path_count": 0,
+      "compression_failure_count": 0,
+      "repeated_reads": 4,
+      "task_pass_count": 1,
+      "task_count": 4,
+      "task_pass_rate": 0.25,
+      "task_results": [
+        {
+          "task": "recent_result",
+          "passed": true,
+          "missing_needles": 0,
+          "missing": []
+        },
+        {
+          "task": "old_path",
+          "passed": false,
+          "missing_needles": 1,
+          "missing": [
+            "src/legacy_config.py"
+          ]
+        },
+        {
+          "task": "failed_status",
+          "passed": false,
+          "missing_needles": 2,
+          "missing": [
+            "status=error",
+            "exit_code=1"
+          ]
+        },
+        {
+          "task": "memory_fact",
+          "passed": false,
+          "missing_needles": 1,
+          "missing": [
+            "MEMORY_TARGET_FACT"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "tool_round_compression_memory_on",
+      "context_strategy": "tool_round_compression",
+      "memory_enabled": true,
+      "prompt_chars": 840,
+      "prompt_over_budget": false,
+      "history_rendered_chars": 558,
+      "active_round_count": 2,
+      "compressed_round_count": 16,
+      "retained_failed_tool_count": 1,
+      "retained_file_path_count": 16,
+      "compression_failure_count": 0,
+      "repeated_reads": 1,
+      "task_pass_count": 3,
+      "task_count": 4,
+      "task_pass_rate": 0.75,
+      "task_results": [
+        {
+          "task": "recent_result",
+          "passed": true,
+          "missing_needles": 0,
+          "missing": []
+        },
+        {
+          "task": "old_path",
+          "passed": false,
+          "missing_needles": 1,
+          "missing": [
+            "src/legacy_config.py"
+          ]
+        },
+        {
+          "task": "failed_status",
+          "passed": true,
+          "missing_needles": 0,
+          "missing": []
+        },
+        {
+          "task": "memory_fact",
+          "passed": true,
+          "missing_needles": 0,
+          "missing": []
+        }
+      ]
+    },
+    {
+      "group": "tool_round_compression_memory_off",
+      "context_strategy": "tool_round_compression",
+      "memory_enabled": false,
+      "prompt_chars": 706,
+      "prompt_over_budget": false,
+      "history_rendered_chars": 558,
+      "active_round_count": 2,
+      "compressed_round_count": 16,
+      "retained_failed_tool_count": 1,
+      "retained_file_path_count": 16,
+      "compression_failure_count": 0,
+      "repeated_reads": 2,
+      "task_pass_count": 2,
+      "task_count": 4,
+      "task_pass_rate": 0.5,
+      "task_results": [
+        {
+          "task": "recent_result",
+          "passed": true,
+          "missing_needles": 0,
+          "missing": []
+        },
+        {
+          "task": "old_path",
+          "passed": false,
+          "missing_needles": 1,
+          "missing": [
+            "src/legacy_config.py"
+          ]
+        },
+        {
+          "task": "failed_status",
+          "passed": true,
+          "missing_needles": 0,
+          "missing": []
+        },
+        {
+          "task": "memory_fact",
+          "passed": false,
+          "missing_needles": 1,
+          "missing": [
+            "MEMORY_TARGET_FACT"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "best_group": "tool_round_compression_memory_on",
+    "best_pass_rate": 0.75,
+    "best_repeated_reads": 1,
+    "tool_round_avg_pass_rate": 0.625,
+    "section_clipping_avg_pass_rate": 0.375,
+    "tool_round_avg_repeated_reads": 1.5,
+    "section_clipping_avg_repeated_reads": 3.5
+  }
+}

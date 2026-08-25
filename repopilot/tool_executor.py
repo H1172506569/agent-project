@@ -1,8 +1,8 @@
 """Structured tool execution for the agent runtime."""
 
-from dataclasses import dataclass
-import re
+from dataclasses import dataclass, field
 
+from .tools import normalize_tool_output
 from .workspace import clip
 
 
@@ -10,6 +10,7 @@ from .workspace import clip
 class ToolExecutionResult:
     content: str
     metadata: dict
+    data: dict = field(default_factory=dict)
 
 
 def _metadata(
@@ -112,21 +113,23 @@ class ToolExecutor:
         before_snapshot = agent.capture_workspace_snapshot() if tool["risky"] else {}
         after_snapshot = before_snapshot
         try:
-            content = clip(tool["run"](args))
+            output = normalize_tool_output(tool["run"](args))
+            content = clip(output.content)
+            data = dict(output.data or {})
             after_snapshot = agent.capture_workspace_snapshot() if tool["risky"] else before_snapshot
             affected_paths, diff_summary = agent.diff_workspace_snapshots(before_snapshot, after_snapshot)
             workspace_changed = bool(affected_paths)
             tool_status = "ok"
             tool_error_code = ""
             if name == "run_shell":
-                match = re.search(r"exit_code:\s*(-?\d+)", content)
-                exit_code = int(match.group(1)) if match else 0
+                exit_code = int(data.get("exit_code", 0))
                 if exit_code != 0 and workspace_changed:
                     tool_status = "partial_success"
                     tool_error_code = "tool_partial_success"
                 elif exit_code != 0:
                     tool_status = "error"
                     tool_error_code = "tool_failed"
+                data["exit_code"] = exit_code
             agent.update_memory_after_tool(name, args, content)
             metadata = _metadata(
                 tool_status,
@@ -138,8 +141,12 @@ class ToolExecutor:
                 workspace_fingerprint=agent.workspace.fingerprint(),
                 diff_summary=diff_summary,
             )
+            if name == "run_shell":
+                metadata["exit_code"] = data.get("exit_code", 0)
+            if data:
+                metadata["structured_data_keys"] = sorted(data)
             agent.record_process_note_for_tool(name, metadata)
-            return ToolExecutionResult(content=content, metadata=metadata)
+            return ToolExecutionResult(content=content, metadata=metadata, data=data)
         except Exception as exc:
             after_snapshot = agent.capture_workspace_snapshot() if tool["risky"] else before_snapshot
             affected_paths, diff_summary = agent.diff_workspace_snapshots(before_snapshot, after_snapshot)
@@ -157,4 +164,4 @@ class ToolExecutor:
                 diff_summary=diff_summary,
             )
             agent.record_process_note_for_tool(name, metadata)
-            return ToolExecutionResult(content=f"error: tool {name} failed: {exc}", metadata=metadata)
+            return ToolExecutionResult(content=f"error: tool {name} failed: {exc}", metadata=metadata, data={})

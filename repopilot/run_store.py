@@ -8,6 +8,8 @@ import json
 import tempfile
 from pathlib import Path
 
+from .event_log import load_events
+
 
 def _run_id(value):
     if hasattr(value, "run_id"):
@@ -29,6 +31,9 @@ class RunStore:
     def trace_path(self, run_id):
         return self.run_dir(run_id) / "trace.jsonl"
 
+    def event_log_path(self, run_id):
+        return self.run_dir(run_id) / "event_log.jsonl"
+
     def report_path(self, run_id):
         return self.run_dir(run_id) / "report.json"
 
@@ -46,15 +51,23 @@ class RunStore:
         self._write_json_atomic(path, task_state.to_dict())
         return path
 
-    def append_trace(self, task_state, event):
-        path = self.trace_path(task_state)
+    def append_jsonl(self, path, event):
         path.parent.mkdir(parents=True, exist_ok=True)
-        # trace 采用 jsonl 追加写入，原因是 agent 运行过程是流式事件序列，
-        # 逐条落盘比“最后一次性写整份 trace”更稳，也更适合调试。
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(event, sort_keys=True, ensure_ascii=True))
             handle.write("\n")
         return path
+
+    def append_trace(self, task_state, event):
+        # trace 采用 jsonl 追加写入，原因是 agent 运行过程是流式事件序列，
+        # 逐条落盘比“最后一次性写整份 trace”更稳，也更适合调试。
+        return self.append_jsonl(self.trace_path(task_state), event)
+
+    def append_event(self, task_state, event):
+        return self.append_jsonl(self.event_log_path(task_state), event)
+
+    def load_events(self, run_id):
+        return load_events(self.event_log_path(run_id))
 
     def write_report(self, task_state, report):
         path = self.report_path(task_state)

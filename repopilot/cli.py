@@ -32,10 +32,8 @@ DEFAULT_SECRET_ENV_NAMES = (
 )
 
 WELCOME_ART = (
-    "        /\\___/\\\\",
-    "       (  o o  )",
-    "       /   ^   \\\\",
-    "      /|       |\\\\",
+    "     /\\_/\\",
+    "     ( o.o )"
 )
 WELCOME_NAME = "repopilot"
 WELCOME_SUBTITLE = "local coding agent"
@@ -275,7 +273,7 @@ def build_arg_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Minimal coding agent for DeepSeek, OpenAI-compatible, Anthropic-compatible, or Ollama models.",
     )
-    parser.add_argument("prompt", nargs="*", help="Optional one-shot prompt.")
+    parser.add_argument("prompt", nargs="*", help="Optional one-shot prompt, or paths when --inspect is set.")
     parser.add_argument("--cwd", default=".", help="Workspace directory.")
     parser.add_argument(
         "--provider",
@@ -293,6 +291,7 @@ def build_arg_parser():
     parser.add_argument("--ollama-timeout", type=int, default=300, help="Ollama request timeout in seconds.")
     parser.add_argument("--openai-timeout", type=int, default=300, help="OpenAI-compatible request timeout in seconds.")
     parser.add_argument("--resume", default=None, help="Session id to resume or 'latest'.")
+    parser.add_argument("--inspect", action="store_true", help="Run deterministic per-file inspect mode over the provided paths or git diff files.")
     parser.add_argument("--approval", choices=("ask", "auto", "never"), default="ask", help="Approval policy for risky tools.")
     parser.add_argument(
         "--secret-env-name",
@@ -315,6 +314,18 @@ def main(argv=None):
     model = getattr(agent.model_client, "model", getattr(args, "model", DEFAULT_OLLAMA_MODEL))
     host = getattr(agent.model_client, "host", getattr(agent.model_client, "base_url", getattr(args, "host", DEFAULT_OLLAMA_HOST)))
     print(build_welcome(agent, model=model, host=host))
+
+    if args.inspect:
+        print()
+        try:
+            report = agent.inspect(paths=args.prompt or None)
+        except RuntimeError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(report.get("rendered", ""))
+        if report.get("report_path"):
+            print(f"inspection_report: {report['report_path']}")
+        return 0
 
     if args.prompt:
         # one-shot 模式：只跑一次 ask，不进入 REPL 循环。

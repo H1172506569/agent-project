@@ -44,3 +44,10 @@ def test_packaging_discovers_repopilot_subpackages():
 
     assert "[tool.setuptools.packages.find]" in pyproject_text
     assert 'include = ["repopilot*"]' in pyproject_text
+
+
+def test_arg_parser_accepts_inspect_mode_paths(tmp_path):
+    args = build_arg_parser().parse_args(["--cwd", str(tmp_path), "--inspect", "src/app.py"])
+
+    assert args.inspect is True
+    assert args.prompt == ["src/app.py"]

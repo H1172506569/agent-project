@@ -7,9 +7,25 @@
 import shutil
 import subprocess
 import textwrap
+from dataclasses import dataclass, field
 from functools import partial
 
 from .workspace import IGNORED_PATH_NAMES
+
+
+@dataclass(frozen=True)
+class ToolOutput:
+    """Machine-readable tool output plus model-facing text."""
+
+    content: str
+    data: dict = field(default_factory=dict)
+
+
+def normalize_tool_output(value):
+    if isinstance(value, ToolOutput):
+        return value
+    return ToolOutput(content=str(value), data={})
+
 
 BASE_TOOL_SPECS = {
     "list_files": {
@@ -50,6 +66,74 @@ DELEGATE_TOOL_SPEC = {
     "description": "Ask a bounded read-only child agent to investigate.",
 }
 
+TOOL_PARAMETER_SCHEMAS = {
+    "list_files": {
+        "type": "object",
+        "properties": {"path": {"type": "string", "default": "."}},
+        "additionalProperties": False,
+    },
+    "read_file": {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+            "start": {"type": "integer", "default": 1, "minimum": 1},
+            "end": {"type": "integer", "default": 200, "minimum": 1},
+        },
+        "required": ["path"],
+        "additionalProperties": False,
+    },
+    "search": {
+        "type": "object",
+        "properties": {
+            "pattern": {"type": "string", "minLength": 1},
+            "path": {"type": "string", "default": "."},
+        },
+        "required": ["pattern"],
+        "additionalProperties": False,
+    },
+    "run_shell": {
+        "type": "object",
+        "properties": {
+            "command": {"type": "string", "minLength": 1},
+            "timeout": {"type": "integer", "default": 20, "minimum": 1, "maximum": 120},
+        },
+        "required": ["command"],
+        "additionalProperties": False,
+    },
+    "write_file": {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+            "content": {"type": "string"},
+        },
+        "required": ["path", "content"],
+        "additionalProperties": False,
+    },
+    "patch_file": {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string"},
+            "old_text": {"type": "string", "minLength": 1},
+            "new_text": {"type": "string"},
+        },
+        "required": ["path", "old_text", "new_text"],
+        "additionalProperties": False,
+    },
+    "delegate": {
+        "type": "object",
+        "properties": {
+            "task": {"type": "string", "minLength": 1},
+            "max_steps": {"type": "integer", "default": 3, "minimum": 1},
+        },
+        "required": ["task"],
+        "additionalProperties": False,
+    },
+}
+
+
+def _with_parameter_schema(name, spec):
+    return {**spec, "parameters": TOOL_PARAMETER_SCHEMAS[name]}
+
 
 def legal_tool_names():
     return set(BASE_TOOL_SPECS) | {"delegate"}
@@ -69,13 +153,13 @@ def build_tool_registry(context):
     # 工具不是动态发现的，而是显式注册的。
     # 这样模型看到的是一个有边界、可审计的动作集合。
     tools = {
-        name: {**spec, "run": partial(_TOOL_RUNNERS[name], context)}
+        name: {**_with_parameter_schema(name, spec), "run": partial(_TOOL_RUNNERS[name], context)}
         for name, spec in BASE_TOOL_SPECS.items()
     }
     # 子 agent 是刻意做成受限能力的：一旦深度耗尽，
     # 就连 delegate 这个工具都不再暴露给模型。
     if context.depth < context.max_depth:
-        tools["delegate"] = {**DELEGATE_TOOL_SPEC, "run": partial(tool_delegate, context)}
+        tools["delegate"] = {**_with_parameter_schema("delegate", DELEGATE_TOOL_SPEC), "run": partial(tool_delegate, context)}
     return tools
 
 
@@ -228,15 +312,25 @@ def tool_run_shell(context, args):
         # 目的是减少敏感信息被意外带进命令执行环境的风险。
         env=context.shell_env(),
     )
-    return textwrap.dedent(
+    stdout = result.stdout.strip() or "(empty)"
+    stderr = result.stderr.strip() or "(empty)"
+    content = textwrap.dedent(
         f"""\
         exit_code: {result.returncode}
         stdout:
-        {result.stdout.strip() or "(empty)"}
+        {stdout}
         stderr:
-        {result.stderr.strip() or "(empty)"}
+        {stderr}
         """
     ).strip()
+    return ToolOutput(
+        content=content,
+        data={
+            "exit_code": result.returncode,
+            "stdout": stdout,
+            "stderr": stderr,
+        },
+    )
 
 
 def tool_write_file(context, args):

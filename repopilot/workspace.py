@@ -8,6 +8,7 @@ import subprocess
 import textwrap
 import hashlib
 import json
+import locale
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -61,11 +62,14 @@ class WorkspaceContext:
                     ["git", *args],
                     cwd=cwd,
                     capture_output=True,
-                    text=True,
                     check=True,
                     timeout=5,
                 )
-                return result.stdout.strip() or fallback
+                try:
+                    stdout = result.stdout.decode("utf-8")
+                except UnicodeDecodeError:
+                    stdout = result.stdout.decode(locale.getpreferredencoding(False), errors="replace")
+                return stdout.strip() or fallback
             except Exception:
                 return fallback
 

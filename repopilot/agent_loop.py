@@ -97,6 +97,7 @@ class AgentLoop:
         agent.record({"role": "assistant", "content": final, "created_at": now()})
         task_state.finish_success(final)
         agent.promote_durable_memory(user_message, final)
+        agent.promote_memory_candidates(task_state)
         checkpoint = agent.create_checkpoint(task_state, user_message, trigger="run_finished")
         agent.run_store.write_task_state(task_state)
         agent.emit_trace(
@@ -123,13 +124,12 @@ class AgentLoop:
     def run(self, user_message):
         agent = self.agent
         run_started_at = time.monotonic()
-        agent.memory.set_task_summary(user_message)
-        agent.record({"role": "user", "content": user_message, "created_at": now()})
-
         task_state = TaskState.create(run_id=agent.new_run_id(), task_id=agent.new_task_id(), user_request=user_message)
         task_state.resume_status = agent.resume_state.get("status", CHECKPOINT_NONE_STATUS)
         agent.current_task_state = task_state
         agent.current_run_dir = agent.run_store.start_run(task_state)
+        agent.memory.set_task_summary(user_message)
+        agent.record({"role": "user", "content": user_message, "created_at": now()})
         agent.emit_trace(
             task_state,
             "run_started",

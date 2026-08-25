@@ -1,0 +1,4488 @@
+{
+  "experiment": "p7_memory_candidate_save_promotion",
+  "candidate_count": 180,
+  "candidate_types": [
+    "stable_convention",
+    "dependency_fact",
+    "user_preference",
+    "transient_noise",
+    "sensitive_secret",
+    "conflict"
+  ],
+  "candidates_per_type": 30,
+  "category_distribution": {
+    "stable_convention": 30,
+    "dependency_fact": 30,
+    "user_preference": 30,
+    "transient_noise": 30,
+    "sensitive_secret": 30,
+    "conflict": 30
+  },
+  "groups": [
+    {
+      "group": "A_no_durable_memory",
+      "description": "Only history/context; nothing is promoted into durable memory.",
+      "metrics": {
+        "candidate_count": 0,
+        "promoted_count": 0,
+        "rejected_count": 0,
+        "pending_count": 0,
+        "rejected_sensitive_candidate_count": 0,
+        "duplicate_candidate_suppression_count": 0,
+        "conflict_detection_count": 0,
+        "evidence_coverage": 0.0,
+        "promotion_precision_proxy": 0.0,
+        "stale_memory_invalidation_rate": 0.0,
+        "memory_usefulness_rate": 0.0,
+        "sensitive_leak_count": 0
+      }
+    },
+    {
+      "group": "B_file_style_durable_memory",
+      "description": "Existing file-style durable notes; useful but not evidence-bound or policy-audited.",
+      "metrics": {
+        "candidate_count": 180,
+        "promoted_count": 90,
+        "rejected_count": 0,
+        "pending_count": 0,
+        "rejected_sensitive_candidate_count": 0,
+        "duplicate_candidate_suppression_count": 0,
+        "conflict_detection_count": 0,
+        "evidence_coverage": 0.0,
+        "promotion_precision_proxy": 1.0,
+        "stale_memory_invalidation_rate": 0.0,
+        "memory_usefulness_rate": 0.5,
+        "sensitive_leak_count": 0
+      }
+    },
+    {
+      "group": "C_llm_direct_summary_write",
+      "description": "LLM summary writes directly to memory without SAVE/policy gating.",
+      "metrics": {
+        "candidate_count": 180,
+        "promoted_count": 180,
+        "rejected_count": 0,
+        "pending_count": 0,
+        "rejected_sensitive_candidate_count": 0,
+        "duplicate_candidate_suppression_count": 0,
+        "conflict_detection_count": 0,
+        "evidence_coverage": 0.0,
+        "promotion_precision_proxy": 0.5,
+        "stale_memory_invalidation_rate": 0.0,
+        "memory_usefulness_rate": 0.5,
+        "sensitive_leak_count": 30
+      }
+    },
+    {
+      "group": "D_candidate_save_promotion",
+      "description": "Candidate + SAVE promotion + evidence binding with dedupe, conflict and sensitive filters.",
+      "metrics": {
+        "candidate_count": 180,
+        "promoted_count": 90,
+        "rejected_count": 60,
+        "pending_count": 30,
+        "rejected_sensitive_candidate_count": 30,
+        "duplicate_candidate_suppression_count": 0,
+        "conflict_detection_count": 30,
+        "evidence_coverage": 1.0,
+        "promotion_precision_proxy": 1.0,
+        "stale_memory_invalidation_rate": 0.0,
+        "memory_usefulness_rate": 0.5,
+        "sensitive_leak_count": 0
+      },
+      "decisions": [
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-00 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:0"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-01 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:1"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-02 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:2"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-03 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:3"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-04 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:4"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-05 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:5"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-06 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:6"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-07 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:7"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-08 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:8"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-09 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:9"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-10 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:10"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-11 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:11"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-12 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:12"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-13 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:13"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-14 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:14"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-15 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:15"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-16 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:16"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-17 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:17"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-18 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:18"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-19 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:19"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-20 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:20"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-21 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:21"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-22 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:22"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-23 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:23"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-24 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:24"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-25 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:25"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-26 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:26"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-27 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:27"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-28 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:28"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project convention memory-benchmark-29 uses structured tool results.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:stable_convention",
+            "evidence_event_ids": [
+              "event:29"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-00 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:30"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-01 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:31"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-02 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:32"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-03 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:33"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-04 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:34"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-05 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:35"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-06 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:36"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-07 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:37"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-08 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:38"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-09 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:39"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-10 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:40"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-11 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:41"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-12 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:42"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-13 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:43"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-14 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:44"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-15 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:45"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-16 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:46"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-17 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:47"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-18 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:48"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-19 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:49"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-20 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:50"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-21 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:51"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-22 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:52"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-23 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:53"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-24 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:54"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-25 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:55"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-26 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:56"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-27 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:57"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-28 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:58"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project dependency benchmark-29 should use pytest for verification.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:dependency_fact",
+            "evidence_event_ids": [
+              "event:59"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-00 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:60"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-01 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:61"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-02 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:62"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-03 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:63"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-04 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:64"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-05 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:65"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-06 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:66"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-07 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:67"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-08 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:68"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-09 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:69"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-10 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:70"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-11 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:71"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-12 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:72"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-13 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:73"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-14 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:74"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-15 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:75"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-16 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:76"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-17 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:77"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-18 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:78"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-19 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:79"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-20 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:80"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-21 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:81"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-22 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:82"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-23 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:83"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-24 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:84"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-25 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:85"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-26 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:86"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-27 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:87"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-28 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:88"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "promote",
+          "reason": "save_passed",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "以后 benchmark-29 类问题都用中文解释。",
+            "kind": "user_preference",
+            "scope": "user",
+            "source": "benchmark:user_preference",
+            "evidence_event_ids": [
+              "event:89"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_00.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:90"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_01.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:91"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_02.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:92"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_03.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:93"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_04.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:94"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_05.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:95"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_06.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:96"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_07.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:97"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_08.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:98"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_09.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:99"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_10.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:100"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_11.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:101"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_12.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:102"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_13.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:103"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_14.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:104"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_15.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:105"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_16.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:106"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_17.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:107"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_18.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:108"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_19.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:109"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_20.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:110"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_21.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:111"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_22.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:112"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_23.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:113"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_24.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:114"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_25.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:115"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_26.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:116"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_27.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:117"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_28.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:118"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "transient",
+          "score": 2,
+          "save": {
+            "stable": false,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Next step is reading temporary_module_29.py.",
+            "kind": "project_convention",
+            "scope": "project",
+            "source": "benchmark:transient_noise",
+            "evidence_event_ids": [
+              "event:119"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-00abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:120"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-01abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:121"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-02abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:122"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-03abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:123"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-04abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:124"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-05abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:125"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-06abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:126"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-07abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:127"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.285424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-08abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:128"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-09abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:129"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-10abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:130"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-11abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:131"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-12abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:132"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-13abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:133"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-14abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:134"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-15abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:135"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-16abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:136"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-17abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:137"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-18abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:138"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-19abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:139"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-20abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:140"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-21abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:141"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-22abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:142"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-23abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:143"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-24abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:144"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-25abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:145"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-26abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:146"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-27abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:147"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-28abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:148"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "reject",
+          "reason": "sensitive",
+          "score": 3,
+          "save": {
+            "stable": true,
+            "actionable": false,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Dependency API key is sk-live-secret-29abc123.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:sensitive_secret",
+            "evidence_event_ids": [
+              "event:149"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": ""
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-00.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:150"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-01.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:151"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-02.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:152"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-03.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:153"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-04.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:154"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-05.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:155"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-06.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:156"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-07.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:157"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-08.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:158"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-09.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:159"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-10.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:160"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-11.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:161"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-12.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:162"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-13.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:163"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-14.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:164"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-15.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:165"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-16.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:166"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-17.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:167"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-18.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:168"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-19.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:169"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-20.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:170"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-21.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:171"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-22.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:172"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-23.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:173"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-24.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:174"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-25.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:175"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-26.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:176"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-27.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:177"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-28.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:178"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        },
+        {
+          "action": "pending_confirmation",
+          "reason": "conflict",
+          "score": 4,
+          "save": {
+            "stable": true,
+            "actionable": true,
+            "verifiable": true,
+            "economical": true
+          },
+          "candidate": {
+            "text": "Project should use pytest for tests benchmark-29.",
+            "kind": "dependency_fact",
+            "scope": "project",
+            "source": "benchmark:conflict",
+            "evidence_event_ids": [
+              "event:179"
+            ],
+            "confidence": 1.0,
+            "created_at": "2026-08-24T03:17:16.286424+00:00"
+          },
+          "duplicate_of": "",
+          "conflict_with": "Project should not use pytest for tests."
+        }
+      ],
+      "category_metrics": {
+        "stable_convention": {
+          "candidate_count": 30,
+          "promoted_count": 30,
+          "rejected_count": 0,
+          "pending_count": 0,
+          "sensitive_rejected_count": 0,
+          "transient_rejected_count": 0,
+          "conflict_pending_count": 0
+        },
+        "dependency_fact": {
+          "candidate_count": 30,
+          "promoted_count": 30,
+          "rejected_count": 0,
+          "pending_count": 0,
+          "sensitive_rejected_count": 0,
+          "transient_rejected_count": 0,
+          "conflict_pending_count": 0
+        },
+        "user_preference": {
+          "candidate_count": 30,
+          "promoted_count": 30,
+          "rejected_count": 0,
+          "pending_count": 0,
+          "sensitive_rejected_count": 0,
+          "transient_rejected_count": 0,
+          "conflict_pending_count": 0
+        },
+        "transient_noise": {
+          "candidate_count": 30,
+          "promoted_count": 0,
+          "rejected_count": 30,
+          "pending_count": 0,
+          "sensitive_rejected_count": 0,
+          "transient_rejected_count": 30,
+          "conflict_pending_count": 0
+        },
+        "sensitive_secret": {
+          "candidate_count": 30,
+          "promoted_count": 0,
+          "rejected_count": 30,
+          "pending_count": 0,
+          "sensitive_rejected_count": 30,
+          "transient_rejected_count": 0,
+          "conflict_pending_count": 0
+        },
+        "conflict": {
+          "candidate_count": 30,
+          "promoted_count": 0,
+          "rejected_count": 0,
+          "pending_count": 30,
+          "sensitive_rejected_count": 0,
+          "transient_rejected_count": 0,
+          "conflict_pending_count": 30
+        }
+      }
+    }
+  ],
+  "summary": {
+    "best_group": "D_candidate_save_promotion",
+    "resume_metrics": {
+      "save_candidate_count": 180,
+      "save_promoted_count": 90,
+      "save_rejected_count": 60,
+      "save_pending_count": 30,
+      "save_evidence_coverage": 1.0,
+      "save_promotion_precision_proxy": 1.0,
+      "sensitive_leaks_direct_write": 30,
+      "sensitive_leaks_save": 0,
+      "conflict_pending_count": 30,
+      "sensitive_rejected_count": 30
+    }
+  }
+}
