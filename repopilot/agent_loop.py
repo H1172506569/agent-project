@@ -96,7 +96,6 @@ class AgentLoop:
         agent = self.agent
         agent.record({"role": "assistant", "content": final, "created_at": now()})
         task_state.finish_success(final)
-        agent.promote_durable_memory(user_message, final)
         agent.promote_memory_candidates(task_state)
         checkpoint = agent.create_checkpoint(task_state, user_message, trigger="run_finished")
         agent.run_store.write_task_state(task_state)
@@ -300,7 +299,7 @@ class AgentLoop:
             final = "Stopped after reaching the step limit without a final answer."
             task_state.stop_step_limit(final)
         agent.record({"role": "assistant", "content": final, "created_at": now()})
-        agent.promote_durable_memory(user_message, final)
+        agent.promote_memory_candidates(task_state)
         agent.run_store.write_task_state(task_state)
         checkpoint = agent.create_checkpoint(task_state, user_message, trigger=task_state.stop_reason or "run_stopped")
         agent.emit_trace(

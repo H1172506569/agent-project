@@ -114,6 +114,26 @@ def test_candidate_generation_extracts_user_preference_and_pytest_fact():
     assert candidates[1].evidence_event_ids == ("event:1",)
 
 
+def test_candidate_generation_splits_multiple_user_preferences():
+    events = [
+        {
+            "source": "history",
+            "event": "history_recorded",
+            "history": {
+                "role": "user",
+                "content": "- Always use pytest for project verification.\n- Never commit generated reports.",
+            },
+        },
+    ]
+
+    candidates = generate_memory_candidates(events)
+
+    assert [candidate.text for candidate in candidates] == [
+        "Always use pytest for project verification.",
+        "Never commit generated reports.",
+    ]
+
+
 def test_agent_loop_promotes_memory_candidates_into_event_log_and_report(tmp_path):
     (tmp_path / "README.md").write_text("demo\n", encoding="utf-8")
     workspace = WorkspaceContext.build(tmp_path)

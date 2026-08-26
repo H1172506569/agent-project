@@ -24,6 +24,8 @@ STABLE_TEXT_PATTERN = re.compile(
 )
 USER_PREFERENCE_PATTERN = re.compile(r"(?i)(\balways\b|\bnever\b|\bprefer\b|以后|以后都|总是|不要|别|用中文|中文解释)")
 
+USER_PREFERENCE_SPLIT_PATTERN = re.compile(r"(?:\r?\n|;+)")
+
 KIND_TO_TOPIC = {
     "project_convention": "project-conventions",
     "decision": "key-decisions",
@@ -171,6 +173,14 @@ def _find_conflict(candidate_text, existing_texts):
     return ""
 
 
+def _user_preference_fragments(content):
+    fragments = USER_PREFERENCE_SPLIT_PATTERN.split(str(content or ""))
+    for fragment in fragments:
+        text = re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", fragment).strip()
+        if text and USER_PREFERENCE_PATTERN.search(text):
+            yield clip(text, 220)
+
+
 class MemoryPromotionPolicy:
     def __init__(self, threshold=4):
         self.threshold = int(threshold)
@@ -236,8 +246,8 @@ def generate_memory_candidates(events):
             item = event.get("history") if isinstance(event.get("history"), dict) else {}
             if item.get("role") == "user":
                 content = str(item.get("content", "")).strip()
-                if USER_PREFERENCE_PATTERN.search(content):
-                    add(clip(content, 220), "user_preference", "user", "user_message", index, confidence=0.9)
+                for fragment in _user_preference_fragments(content):
+                    add(fragment, "user_preference", "user", "user_message", index, confidence=0.9)
             continue
 
         if event.get("source") != "trace" or event.get("event") != "tool_executed":
