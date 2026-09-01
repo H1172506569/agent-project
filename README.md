@@ -1,5 +1,7 @@
 # RepoPilot
 
+Languages: [English](README.md) | [简体中文](README.zh-CN.md)
+
 RepoPilot is a lightweight local coding agent for working directly inside a Git repository. It runs in the terminal, lets a language model request bounded tools, records every step locally, and keeps enough runtime state to resume investigation across turns.
 
 The project is intentionally small: it does not depend on LangGraph or a heavy orchestration framework. The runtime keeps the agent loop explicit so tool execution, approvals, event logging, context budgeting, and recovery behavior can be tested as ordinary Python code.
