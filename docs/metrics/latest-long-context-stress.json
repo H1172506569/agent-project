@@ -1,0 +1,133 @@
+{
+  "config_count": 12,
+  "configs": [
+    {
+      "id": "short-low-short",
+      "history_level": "short",
+      "note_level": "low",
+      "request_level": "short",
+      "avg_prompt_compression_ratio": 0.0,
+      "avg_full_prompt_chars": 4509.0,
+      "avg_raw_prompt_chars": 4509.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "short-low-long",
+      "history_level": "short",
+      "note_level": "low",
+      "request_level": "long",
+      "avg_prompt_compression_ratio": 0.0,
+      "avg_full_prompt_chars": 4581.0,
+      "avg_raw_prompt_chars": 4581.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "short-high-short",
+      "history_level": "short",
+      "note_level": "high",
+      "request_level": "short",
+      "avg_prompt_compression_ratio": 0.0,
+      "avg_full_prompt_chars": 4707.0,
+      "avg_raw_prompt_chars": 4707.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "short-high-long",
+      "history_level": "short",
+      "note_level": "high",
+      "request_level": "long",
+      "avg_prompt_compression_ratio": 0.0,
+      "avg_full_prompt_chars": 4779.0,
+      "avg_raw_prompt_chars": 4779.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "medium-low-short",
+      "history_level": "medium",
+      "note_level": "low",
+      "request_level": "short",
+      "avg_prompt_compression_ratio": 0.16361115390540748,
+      "avg_full_prompt_chars": 5429.0,
+      "avg_raw_prompt_chars": 6491.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "medium-low-long",
+      "history_level": "medium",
+      "note_level": "low",
+      "request_level": "long",
+      "avg_prompt_compression_ratio": 0.1618162425719945,
+      "avg_full_prompt_chars": 5501.0,
+      "avg_raw_prompt_chars": 6563.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "medium-high-short",
+      "history_level": "medium",
+      "note_level": "high",
+      "request_level": "short",
+      "avg_prompt_compression_ratio": 0.15876812677530275,
+      "avg_full_prompt_chars": 5627.0,
+      "avg_raw_prompt_chars": 6689.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "medium-high-long",
+      "history_level": "medium",
+      "note_level": "high",
+      "request_level": "long",
+      "avg_prompt_compression_ratio": 0.15707735542079573,
+      "avg_full_prompt_chars": 5699.0,
+      "avg_raw_prompt_chars": 6761.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "long-low-short",
+      "history_level": "long",
+      "note_level": "low",
+      "request_level": "short",
+      "avg_prompt_compression_ratio": 0.3371687955241212,
+      "avg_full_prompt_chars": 6279.0,
+      "avg_raw_prompt_chars": 9473.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "long-low-long",
+      "history_level": "long",
+      "note_level": "low",
+      "request_level": "long",
+      "avg_prompt_compression_ratio": 0.3346254583551598,
+      "avg_full_prompt_chars": 6351.0,
+      "avg_raw_prompt_chars": 9545.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "long-high-short",
+      "history_level": "long",
+      "note_level": "high",
+      "request_level": "short",
+      "avg_prompt_compression_ratio": 0.33026574294281874,
+      "avg_full_prompt_chars": 6477.0,
+      "avg_raw_prompt_chars": 9671.0,
+      "current_request_preserved_rate": 1.0
+    },
+    {
+      "id": "long-high-long",
+      "history_level": "long",
+      "note_level": "high",
+      "request_level": "long",
+      "avg_prompt_compression_ratio": 0.32782510520373603,
+      "avg_full_prompt_chars": 6549.0,
+      "avg_raw_prompt_chars": 9743.0,
+      "current_request_preserved_rate": 1.0
+    }
+  ],
+  "summary": {
+    "avg_full_prompt_chars": 5540.666666666667,
+    "avg_raw_prompt_chars": 6959.333333333333,
+    "avg_prompt_compression_ratio": 0.164263165058278,
+    "max_prompt_compression_ratio": 0.3371687955241212,
+    "min_prompt_compression_ratio": 0.0,
+    "current_request_preserved_rate": 1.0
+  }
+}

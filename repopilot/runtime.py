@@ -7,6 +7,7 @@ RepoPilot 就是包在模型外面的控制循环：负责组 prompt、解析模
 import json
 import hashlib
 import os
+import threading
 import re
 import uuid
 from datetime import datetime
@@ -15,11 +16,20 @@ from pathlib import Path
 from . import checkpoint as checkpointlib
 from .features import memory as memorylib
 from . import security as securitylib
+from .config import load_project_env, provider_env
+from .context_compression import (
+    render_llm_tool_round_compressed_history,
+    render_tool_round_compressed_history,
+)
 from .context_manager import ContextManager
+from .coverage_manifest import build_coverage_manifest
+from .event_log import event_log_metrics, project_history, project_trace
+from .memory_promotion import MemoryPromotionPolicy, generate_memory_candidates, memory_promotion_metrics
 from .checkpoint import CHECKPOINT_NONE_STATUS
 from .prompt_prefix import build_prompt_prefix, tool_signature
+from .providers.clients import AnthropicCompatibleModelClient
 from .run_store import RunStore
-from .security import REDACTED_VALUE
+from .session_log import SessionLogStore
 from .session_store import SessionStore
 from .tool_context import ToolContext
 from .tool_executor import ToolExecutor
@@ -50,21 +60,11 @@ DEFAULT_FEATURE_FLAGS = {
     "relevant_memory": True,
     "context_reduction": True,
     "prompt_cache": True,
+    "tool_round_compression": False,
+    "adaptive_context_compression": False,
+    "llm_context_compression": True,
+    "memory_candidate_promotion": True,
 }
-DURABLE_MEMORY_INTENT_PATTERN = re.compile(r"(?i)\b(capture|remember|save|store|persist|note)\b")
-DURABLE_MEMORY_INTENT_ZH_PATTERN = re.compile(r"(记住|保存|记录|沉淀|长期记忆|持久记忆)")
-DURABLE_MEMORY_LINE_PATTERNS = (
-    ("project-conventions", re.compile(r"(?i)^Project convention:\s*(.+)$")),
-    ("key-decisions", re.compile(r"(?i)^Decision:\s*(.+)$")),
-    ("dependency-facts", re.compile(r"(?i)^Dependency:\s*(.+)$")),
-    ("user-preferences", re.compile(r"(?i)^Preference:\s*(.+)$")),
-    ("project-conventions", re.compile(r"^项目约定：\s*(.+)$")),
-    ("key-decisions", re.compile(r"^决策：\s*(.+)$")),
-    ("dependency-facts", re.compile(r"^依赖：\s*(.+)$")),
-    ("user-preferences", re.compile(r"^偏好：\s*(.+)$")),
-)
-SECRET_SHAPED_TEXT_PATTERN = re.compile(r"(?i)(\b(api[_ -]?key|token|secret|password)\b|sk-[A-Za-z0-9_-]{6,})")
-
 __all__ = ["RepoPilot", "SessionStore"]
 
 
@@ -77,7 +77,7 @@ class RepoPilot:
         session=None,
         run_store=None,
         approval_policy="ask",
-        max_steps=6,
+        max_steps=15,
         max_new_tokens=512,
         depth=0,
         max_depth=1,
@@ -86,8 +86,12 @@ class RepoPilot:
         secret_env_names=None,
         feature_flags=None,
         allowed_tools=None,
+        context_compression_model_client=None,
+        interactive_feedback=True,
     ):
         self.model_client = model_client
+        self.context_compression_model_client = context_compression_model_client
+        self.interactive_feedback = bool(interactive_feedback)
         self.workspace = workspace
         self.root = Path(workspace.repo_root)
         self.session_store = session_store
@@ -112,6 +116,8 @@ class RepoPilot:
             "memory": memorylib.default_memory_state(),
         }
         self._ensure_session_shape()
+        self.session_log_store = SessionLogStore(self.session_store.root)
+        self.session_log_store.ensure_header(self.session)
         self.memory = memorylib.LayeredMemory(
             self.session.setdefault("memory", memorylib.default_memory_state()),
             workspace_root=self.root,
@@ -128,14 +134,16 @@ class RepoPilot:
         self.current_run_dir = None
         self.last_prompt_metadata = {}
         self.last_completion_metadata = {}
-        self.last_durable_promotions = []
-        self.last_durable_rejections = []
-        self.last_durable_superseded = []
+        self.last_memory_candidates = []
+        self.last_memory_promotion_decisions = []
+        self.last_memory_promotion_metrics = memory_promotion_metrics([], [])
         self._last_tool_result_metadata = {}
         self._last_prefix_refresh = {
             "workspace_changed": False,
             "prefix_changed": False,
         }
+        self._context_compression_lock = threading.Lock()
+        self._context_compression_thread = None
 
     @classmethod
     def from_session(cls, model_client, workspace, session_store, session_id, **kwargs):
@@ -162,6 +170,9 @@ class RepoPilot:
         resume_state = self.session.setdefault("resume_state", {})
         if not isinstance(resume_state, dict):
             self.session["resume_state"] = {}
+        compression = self.session.setdefault("context_compression", {})
+        if not isinstance(compression, dict):
+            self.session["context_compression"] = {}
 
     def current_runtime_identity(self):
         return checkpointlib.current_runtime_identity(self)
@@ -254,8 +265,27 @@ class RepoPilot:
     def memory_text(self):
         return self.memory.render_memory_text()
 
+    def projected_history(self):
+        """Return the canonical history projection for prompt-time reads.
+
+        The session event log is the source of truth. session["history"] remains
+        as a compatibility/cache surface for older sessions, but prompt
+        construction should consume this accessor.
+        """
+        events = self.session_events()
+        history = project_history(events)
+        if history or events:
+            return history
+        return list(self.session.get("history", []))
+
+    def history_source(self):
+        events = self.session_events()
+        if events:
+            return "session_log"
+        return "session"
+
     def history_text(self):
-        history = self.session["history"]
+        history = self.projected_history()
         if not history:
             return "- empty"
 
@@ -290,6 +320,20 @@ class RepoPilot:
     def record(self, item):
         self.session["history"].append(item)
         self.session_path = self.session_store.save(self.session)
+        self.record_event("history_recorded", {"source": "history", "history": dict(item)})
+
+    def record_event(self, event, payload=None, task_state=None):
+        state = task_state or self.current_task_state
+        payload = self.redact_artifact(payload or {})
+        payload["event"] = event
+        payload.setdefault("created_at", now())
+        return self.session_log_store.append_event(self.session, payload, task_state=state)
+
+    def session_events(self):
+        return self.session_log_store.load_events(self.session["id"])
+
+    def run_events(self, run_id):
+        return self.session_log_store.load_run_events(self.session["id"], run_id)
 
     @staticmethod
     def looks_sensitive_env_name(name):
@@ -327,6 +371,7 @@ class RepoPilot:
         refresh = self.refresh_prefix()
         self.resume_state = self.evaluate_resume_state()
         prompt, metadata = self.context_manager.build(user_message)
+        prompt, metadata = self._maybe_apply_adaptive_context_compression(user_message, prompt, metadata)
         # 这里把“这轮 prompt 是怎么拼出来的”连同缓存相关状态一起记下来，
         # 后面 trace/report 才能解释清楚：为什么这一轮 prefix 变了、缓存有没有命中。
         metadata.update(
@@ -355,12 +400,348 @@ class RepoPilot:
         metadata.update(self.detected_secret_env_summary())
         return prompt, metadata
 
+
+    def _context_compression_budget(self, metadata=None):
+        if metadata:
+            section_budgets = metadata.get("section_budgets") or {}
+            budget = section_budgets.get("history")
+            if budget:
+                return max(120, int(int(budget) * 0.65))
+        return max(120, int(int(getattr(self.context_manager, "section_budgets", {}).get("history", 2400)) * 0.65))
+
+    def _context_usage_ratio(self, metadata):
+        budget = int(metadata.get("prompt_budget_chars") or 0)
+        if budget <= 0:
+            return 0.0
+        return float(metadata.get("prompt_chars", 0)) / float(budget)
+
+    def _maybe_apply_adaptive_context_compression(self, user_message, prompt, metadata):
+        scheduler = {
+            "enabled": self.feature_enabled("adaptive_context_compression"),
+            "async_threshold": 0.60,
+            "sync_threshold": 0.80,
+            "usage_ratio": round(self._context_usage_ratio(metadata), 4),
+            "action": "none",
+        }
+        if not scheduler["enabled"]:
+            metadata["context_compression_scheduler"] = scheduler
+            return prompt, metadata
+
+        ratio = self._context_usage_ratio(metadata)
+        if ratio >= scheduler["sync_threshold"]:
+            before_chars = len(prompt)
+            state = self._run_context_compression(
+                mode="sync",
+                trigger_ratio=ratio,
+                history_budget=self._context_compression_budget(metadata),
+            )
+            prompt, metadata = self.context_manager.build(user_message)
+            after_ratio = self._context_usage_ratio(metadata)
+            scheduler.update(
+                {
+                    "action": "sync_compressed",
+                    "before_prompt_chars": before_chars,
+                    "after_prompt_chars": len(prompt),
+                    "after_usage_ratio": round(after_ratio, 4),
+                    "summary_status": state.get("status", ""),
+                    "summary_rendered_chars": int(state.get("rendered_chars", 0)),
+                    "summary_backend": state.get("backend", "deterministic"),
+                    "llm_escalation": False,
+                }
+            )
+            if after_ratio >= scheduler["sync_threshold"] and self.feature_enabled("llm_context_compression"):
+                llm_state = self._run_llm_context_compression(
+                    mode="sync_llm",
+                    trigger_ratio=after_ratio,
+                    history_budget=self._context_compression_budget(metadata),
+                )
+                scheduler.update(
+                    {
+                        "llm_escalation": True,
+                        "llm_escalation_trigger_ratio": round(after_ratio, 4),
+                        "llm_summary_status": llm_state.get("status", ""),
+                        "llm_summary_rendered_chars": int(llm_state.get("rendered_chars", 0)),
+                        "llm_failure": llm_state.get("failure", ""),
+                    }
+                )
+                if llm_state.get("status") == "ready":
+                    prompt, metadata = self.context_manager.build(user_message)
+                    llm_after_ratio = self._context_usage_ratio(metadata)
+                    scheduler.update(
+                        {
+                            "action": "sync_compressed_llm",
+                            "summary_status": llm_state.get("status", ""),
+                            "summary_backend": llm_state.get("backend", "deepseek_llm"),
+                            "after_llm_prompt_chars": len(prompt),
+                            "after_llm_usage_ratio": round(llm_after_ratio, 4),
+                            "llm_call_count": int((llm_state.get("details") or {}).get("llm_call_count", 0) or 0),
+                            "llm_input_tokens": (llm_state.get("details") or {}).get("llm_input_tokens"),
+                            "llm_output_tokens": (llm_state.get("details") or {}).get("llm_output_tokens"),
+                        }
+                    )
+            metadata["context_compression_scheduler"] = scheduler
+            return prompt, metadata
+
+        if ratio >= scheduler["async_threshold"]:
+            action = self._schedule_async_context_compression(
+                trigger_ratio=ratio,
+                history_budget=self._context_compression_budget(metadata),
+            )
+            scheduler["action"] = action
+            metadata["context_compression_scheduler"] = scheduler
+            return prompt, metadata
+
+        metadata["context_compression_scheduler"] = scheduler
+        return prompt, metadata
+
+    def _history_digest(self, history):
+        payload = json.dumps(history, sort_keys=True, ensure_ascii=False, default=str)
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def _deepseek_context_compression_client(self):
+        if self.context_compression_model_client is not None:
+            return self.context_compression_model_client
+        load_project_env(self.root)
+        api_key = provider_env("REPOPILOT_DEEPSEEK_API_KEY", ("DEEPSEEK_API_KEY",))
+        if not api_key:
+            raise RuntimeError("DeepSeek context compression requires REPOPILOT_DEEPSEEK_API_KEY or DEEPSEEK_API_KEY")
+        model = provider_env("REPOPILOT_DEEPSEEK_MODEL", ("DEEPSEEK_MODEL",), "deepseek-v4-pro")
+        base_url = provider_env("REPOPILOT_DEEPSEEK_API_BASE", ("DEEPSEEK_API_BASE",), "https://api.deepseek.com/anthropic")
+        self.context_compression_model_client = AnthropicCompatibleModelClient(
+            model=model,
+            base_url=base_url,
+            api_key=api_key,
+            temperature=0.0,
+            timeout=60,
+            thinking={"type": "disabled"},
+        )
+        return self.context_compression_model_client
+
+    def _run_llm_context_compression(self, mode, trigger_ratio, history_budget=None, history_snapshot=None):
+        history = list(history_snapshot if history_snapshot is not None else self.projected_history())
+        budget = int(history_budget or self._context_compression_budget())
+        started_at = now()
+        try:
+            compressed = render_llm_tool_round_compressed_history(
+                history,
+                budget=budget,
+                model_client=self._deepseek_context_compression_client(),
+                max_new_tokens=450,
+                active_tool_rounds=2,
+            )
+            details = dict(compressed.details or {})
+            if details.get("llm_fallback_used"):
+                raise RuntimeError(details.get("llm_error") or "LLM compression fallback used")
+            details["context_compression_backend"] = "deepseek_llm"
+            state = {
+                "version": 1,
+                "status": "ready",
+                "mode": str(mode),
+                "backend": "deepseek_llm",
+                "trigger_ratio": round(float(trigger_ratio), 4),
+                "source_history_length": len(history),
+                "source_history_digest": self._history_digest(history),
+                "raw_chars": len(compressed.raw),
+                "rendered_chars": len(compressed.rendered),
+                "rendered": compressed.rendered,
+                "details": details,
+                "started_at": started_at,
+                "updated_at": now(),
+                "failure": "",
+            }
+        except Exception as exc:
+            state = {
+                "version": 1,
+                "status": "failed",
+                "mode": str(mode),
+                "backend": "deepseek_llm",
+                "trigger_ratio": round(float(trigger_ratio), 4),
+                "source_history_length": len(history),
+                "source_history_digest": self._history_digest(history),
+                "raw_chars": 0,
+                "rendered_chars": 0,
+                "rendered": "",
+                "details": {},
+                "started_at": started_at,
+                "updated_at": now(),
+                "failure": self.redact_text(str(exc)),
+            }
+        if state["status"] == "ready":
+            with self._context_compression_lock:
+                self.session["context_compression"] = state
+                self.session_path = self.session_store.save(self.session)
+        self.record_event(
+            "context_compression_completed" if state["status"] == "ready" else "context_compression_failed",
+            {
+                "source": "context_compression",
+                "mode": state["mode"],
+                "backend": state["backend"],
+                "status": state["status"],
+                "trigger_ratio": state["trigger_ratio"],
+                "source_history_length": state["source_history_length"],
+                "raw_chars": state["raw_chars"],
+                "rendered_chars": state["rendered_chars"],
+                "failure": state["failure"],
+            },
+        )
+        return state
+
+    def _run_context_compression(self, mode, trigger_ratio, history_budget=None, history_snapshot=None):
+        history = list(history_snapshot if history_snapshot is not None else self.projected_history())
+        budget = int(history_budget or self._context_compression_budget())
+        started_at = now()
+        try:
+            compressed = render_tool_round_compressed_history(history, budget=budget)
+            state = {
+                "version": 1,
+                "status": "ready",
+                "mode": str(mode),
+                "backend": "deterministic",
+                "trigger_ratio": round(float(trigger_ratio), 4),
+                "source_history_length": len(history),
+                "source_history_digest": self._history_digest(history),
+                "raw_chars": len(compressed.raw),
+                "rendered_chars": len(compressed.rendered),
+                "rendered": compressed.rendered,
+                "details": {**dict(compressed.details or {}), "context_compression_backend": "deterministic"},
+                "started_at": started_at,
+                "updated_at": now(),
+                "failure": "",
+            }
+        except Exception as exc:
+            state = {
+                "version": 1,
+                "status": "failed",
+                "mode": str(mode),
+                "backend": "deterministic",
+                "trigger_ratio": round(float(trigger_ratio), 4),
+                "source_history_length": len(history),
+                "source_history_digest": self._history_digest(history),
+                "raw_chars": 0,
+                "rendered_chars": 0,
+                "rendered": "",
+                "details": {},
+                "started_at": started_at,
+                "updated_at": now(),
+                "failure": self.redact_text(str(exc)),
+            }
+        write_skipped = False
+        write_skip_reason = ""
+        with self._context_compression_lock:
+            current = self.session.get("context_compression", {})
+            async_state = state.get("mode") == "async"
+            write_allowed = True
+            if async_state:
+                write_allowed = (
+                    isinstance(current, dict)
+                    and current.get("status") == "pending"
+                    and current.get("mode") == "async"
+                    and current.get("backend") == state.get("backend")
+                    and current.get("source_history_digest") == state.get("source_history_digest")
+                )
+            if write_allowed:
+                self.session["context_compression"] = state
+                self.session_path = self.session_store.save(self.session)
+            else:
+                write_skipped = True
+                write_skip_reason = "stale_async_context_compression"
+                state = {**state, "write_skipped": True, "write_skip_reason": write_skip_reason}
+        self.record_event(
+            "context_compression_completed" if state["status"] == "ready" else "context_compression_failed",
+            {
+                "source": "context_compression",
+                "mode": state["mode"],
+                "backend": state.get("backend", "deterministic"),
+                "status": state["status"],
+                "trigger_ratio": state["trigger_ratio"],
+                "source_history_length": state["source_history_length"],
+                "raw_chars": state["raw_chars"],
+                "rendered_chars": state["rendered_chars"],
+                "failure": state["failure"],
+                "write_skipped": write_skipped,
+                "write_skip_reason": write_skip_reason,
+            },
+        )
+        return state
+
+    def _schedule_async_context_compression(self, trigger_ratio, history_budget=None):
+        with self._context_compression_lock:
+            existing = self.session.get("context_compression", {})
+            if existing.get("status") == "pending":
+                return "async_pending"
+            history_snapshot = list(self.projected_history())
+            digest = self._history_digest(history_snapshot)
+            if existing.get("status") == "ready" and existing.get("source_history_digest") == digest:
+                return "async_summary_fresh"
+            pending = {
+                "version": 1,
+                "status": "pending",
+                "mode": "async",
+                "backend": "deterministic",
+                "trigger_ratio": round(float(trigger_ratio), 4),
+                "source_history_length": len(history_snapshot),
+                "source_history_digest": digest,
+                "raw_chars": 0,
+                "rendered_chars": 0,
+                "rendered": "",
+                "details": {},
+                "started_at": now(),
+                "updated_at": now(),
+                "failure": "",
+            }
+            self.session["context_compression"] = pending
+            self.session_path = self.session_store.save(self.session)
+        self.record_event(
+            "context_compression_scheduled",
+            {
+                "source": "context_compression",
+                "mode": "async",
+                "backend": "deterministic",
+                "trigger_ratio": round(float(trigger_ratio), 4),
+                "source_history_length": len(history_snapshot),
+            },
+        )
+        thread = threading.Thread(
+            target=self._run_context_compression,
+            kwargs={
+                "mode": "async",
+                "trigger_ratio": trigger_ratio,
+                "history_budget": history_budget,
+                "history_snapshot": history_snapshot,
+            },
+            daemon=True,
+        )
+        self._context_compression_thread = thread
+        thread.start()
+        return "async_scheduled"
+
+    def wait_for_context_compression(self, timeout=5.0):
+        thread = self._context_compression_thread
+        if thread is None:
+            return dict(self.session.get("context_compression", {}))
+        thread.join(timeout=float(timeout))
+        return dict(self.session.get("context_compression", {}))
+
+    def compressed_history_summary(self):
+        state = self.session.get("context_compression", {})
+        if not isinstance(state, dict) or state.get("status") != "ready":
+            return {}
+        source_length = int(state.get("source_history_length", 0) or 0)
+        history = self.projected_history()
+        if source_length <= 0 or source_length > len(history):
+            return {}
+        prefix = list(history)[:source_length]
+        if state.get("source_history_digest") != self._history_digest(prefix):
+            return {}
+        return dict(state)
+
     def emit_trace(self, task_state, event, payload=None):
         payload = self.redact_artifact(payload or {})
         payload["event"] = event
         payload["created_at"] = now()
         # trace 是运行中的逐事件时间线，适合回答“这一轮 agent 到底做了什么”。
-        self.run_store.append_trace(task_state, payload)
+        self.record_event(event, {**payload, "source": "trace"}, task_state=task_state)
+        self.run_store.write_trace(task_state, project_trace(self.run_events(task_state.run_id)))
         return payload
 
     def capture_workspace_snapshot(self):
@@ -426,16 +807,31 @@ class RepoPilot:
             return
 
         canonical_path = self.memory.canonical_path(path)
+        changed = False
         # 不是所有工具结果都进入工作记忆。
         # 读文件会生成摘要；写文件/patch 会让旧摘要失效，因为它们可能过期了。
         if name in {"read_file", "write_file", "patch_file"}:
             self.memory.remember_file(canonical_path)
+            changed = True
         if name == "read_file":
             summary = memorylib.summarize_read_result(result)
             self.memory.set_file_summary(canonical_path, summary)
             self.memory.append_note(summary, tags=(canonical_path,), source=canonical_path)
+            changed = True
         elif name in {"write_file", "patch_file"}:
             self.memory.invalidate_file_summary(canonical_path)
+            changed = True
+        if changed:
+            self.session["memory"] = self.memory.to_dict()
+            self.record_event(
+                "memory_updated",
+                {
+                    "source": "memory",
+                    "tool_name": name,
+                    "path": canonical_path,
+                    "memory_files": list(self.session["memory"].get("files", [])),
+                },
+            )
 
     def note_tool(self, name, args, result):
         self.update_memory_after_tool(name, args, result)
@@ -456,71 +852,59 @@ class RepoPilot:
         self.memory.append_note(text, tags=tuple(tags), source=name, kind="process")
         self.session["memory"] = self.memory.to_dict()
 
-    def reject_durable_reason(self, note_text):
-        text = str(note_text or "").strip()
-        lowered = text.lower()
-        if not text:
-            return "empty"
-        if REDACTED_VALUE in text or SECRET_SHAPED_TEXT_PATTERN.search(text):
-            return "secret_shaped"
-        checkpoint_like_prefixes = (
-            "current goal",
-            "current blocker",
-            "next step",
-            "current phase",
-            "key files",
-            "freshness",
-            "当前目标",
-            "当前卡点",
-            "下一步",
-            "当前阶段",
-            "关键文件",
-            "已完成",
-            "已排除",
-        )
-        if any(lowered.startswith(prefix) for prefix in checkpoint_like_prefixes):
-            return "transient_task_state"
-        if re.search(r"(?i)\b(stdout|stderr|traceback|exit_code)\b", text) or len(text) > 220:
-            return "noisy_output"
-        return ""
+    def promote_memory_candidates(self, task_state=None):
+        if not self.feature_enabled("memory") or not self.feature_enabled("memory_candidate_promotion"):
+            self.last_memory_candidates = []
+            self.last_memory_promotion_decisions = []
+            self.last_memory_promotion_metrics = memory_promotion_metrics([], [])
+            return dict(self.last_memory_promotion_metrics)
+        state = task_state or self.current_task_state
+        if state is None:
+            return dict(self.last_memory_promotion_metrics)
 
-    def extract_durable_promotions(self, user_message, final_answer):
-        user_text = str(user_message or "")
-        if not (DURABLE_MEMORY_INTENT_PATTERN.search(user_text) or DURABLE_MEMORY_INTENT_ZH_PATTERN.search(user_text)):
-            return [], []
-        promotions = []
-        rejections = []
-        for line in str(final_answer or "").splitlines():
-            text = line.strip()
-            if not text or REDACTED_VALUE in text:
-                continue
-            for topic, pattern in DURABLE_MEMORY_LINE_PATTERNS:
-                match = pattern.match(text)
-                if not match:
-                    continue
-                note_text = match.group(1).strip()
-                if note_text:
-                    reason = self.reject_durable_reason(note_text)
-                    if reason:
-                        rejections.append(f"{topic}:{reason}")
-                        break
-                    promotions.append((topic, note_text))
-                break
-        return promotions, rejections
+        events = self.run_events(state.run_id)
+        candidates = generate_memory_candidates(events)
+        policy = MemoryPromotionPolicy()
+        decisions = []
+        for candidate in candidates:
+            self.record_event(
+                "memory_candidate_created",
+                {"source": "memory", "candidate": candidate.to_dict()},
+                task_state=state,
+            )
+            decision = policy.evaluate(candidate, self.memory, events=events)
+            decisions.append(decision)
+            payload = {
+                "source": "memory",
+                "decision": decision.to_dict(),
+                "durable_topic": candidate.durable_topic,
+            }
+            if decision.promote:
+                promoted, superseded = self.memory.promote_durable([(candidate.durable_topic, candidate.text)])
+                self.session["memory"] = self.memory.to_dict()
+                payload["promoted"] = promoted
+                payload["superseded"] = superseded
+                self.record_event("memory_promoted", payload, task_state=state)
+            elif decision.reject:
+                self.record_event("memory_rejected", payload, task_state=state)
+            else:
+                self.record_event("memory_pending_confirmation", payload, task_state=state)
 
-    def promote_durable_memory(self, user_message, final_answer):
-        promotions, rejections = self.extract_durable_promotions(user_message, final_answer)
-        promoted, superseded = self.memory.promote_durable(promotions)
-        self.session["memory"] = self.memory.to_dict()
-        self.last_durable_promotions = promoted
-        self.last_durable_rejections = rejections
-        self.last_durable_superseded = superseded
-        return promoted, rejections, superseded
+        self.last_memory_candidates = [candidate.to_dict() for candidate in candidates]
+        self.last_memory_promotion_decisions = [decision.to_dict() for decision in decisions]
+        self.last_memory_promotion_metrics = memory_promotion_metrics(candidates, decisions)
+        self.session_path = self.session_store.save(self.session)
+        return dict(self.last_memory_promotion_metrics)
 
     def ask(self, user_message):
         from .agent_loop import AgentLoop
 
         return AgentLoop(self).run(user_message)
+
+    def inspect(self, paths=None, max_files=20, max_steps=3):
+        from .inspection import run_inspection
+
+        return run_inspection(self, paths=paths, max_files=max_files, max_steps=max_steps)
 
     def execute_tool(self, name, args):
         result = self.tool_executor.execute(name, args)
@@ -548,15 +932,90 @@ class RepoPilot:
         """
         return self.execute_tool(name, args).content
 
-    def repeated_tool_call(self, name, args):
-        # agent 很常见的一种坏循环，是在没有新信息的情况下反复发起同一调用。
-        # 这里提前挡掉最简单的这种循环。
-        tool_events = [item for item in self.session["history"] if item["role"] == "tool"]
-        if len(tool_events) < 2:
-            return False
-        recent = tool_events[-2:]
-        return all(item["name"] == name and item["args"] == args for item in recent)
+    def _normalized_tool_call(self, name, args):
+        args = args if isinstance(args, dict) else {}
+        name = str(name or "")
 
+        def normalized_path(value, default="."):
+            raw = str(value if value not in {None, ""} else default).strip() or default
+            try:
+                resolved = self.path(raw)
+                return resolved.relative_to(self.root).as_posix() or "."
+            except Exception:
+                return raw.replace("\\", "/")
+
+        def int_arg(key, default):
+            try:
+                return int(args.get(key, default))
+            except (TypeError, ValueError):
+                return int(default)
+
+        if name == "list_files":
+            return (name, (("path", normalized_path(args.get("path", "."))),))
+        if name == "read_file":
+            return (
+                name,
+                (
+                    ("path", normalized_path(args.get("path", ""), default="")),
+                    ("start", int_arg("start", 1)),
+                    ("end", int_arg("end", 400)),
+                ),
+            )
+        if name == "search":
+            return (
+                name,
+                (
+                    ("pattern", str(args.get("pattern", "")).strip()),
+                    ("path", normalized_path(args.get("path", "."))),
+                ),
+            )
+        if name == "run_shell":
+            return (
+                name,
+                (
+                    ("command", " ".join(str(args.get("command", "")).split())),
+                    ("timeout", int_arg("timeout", 20)),
+                ),
+            )
+        if name == "delegate":
+            return (
+                name,
+                (
+                    ("task", " ".join(str(args.get("task", "")).split())),
+                    ("max_steps", int_arg("max_steps", 3)),
+                ),
+            )
+        return (name, tuple(sorted((str(key), str(value)) for key, value in args.items())))
+
+    def repeated_tool_call_hint(self, name, args):
+        args = args if isinstance(args, dict) else {}
+        if name == "read_file":
+            try:
+                end = int(args.get("end", 400))
+            except (TypeError, ValueError):
+                end = 400
+            next_start = end + 1
+            next_end = end + 400
+            path = str(args.get("path", "the same file")).strip() or "the same file"
+            return f"read a new range instead, for example {path} lines {next_start}-{next_end}"
+        if name == "list_files":
+            return "use a more specific directory or inspect a file instead"
+        if name == "search":
+            return "change the pattern/path or inspect a matched file instead"
+        return "choose a different tool call or return a final answer"
+
+    def repeated_tool_call(self, name, args):
+        # Normalize default args before comparison so {path} and
+        # {path, start:1, end:400} are treated as the same read range.
+        current = self._normalized_tool_call(name, args)
+        tool_events = [item for item in self.projected_history() if item.get("role") == "tool"]
+        for item in reversed(tool_events):
+            previous_name = item.get("name", "")
+            if self._normalized_tool_call(previous_name, item.get("args", {})) == current:
+                return True
+            if previous_name in {"write_file", "patch_file", "run_shell"}:
+                return False
+        return False
     @staticmethod
     def new_task_id():
         return "task_" + datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
@@ -568,6 +1027,8 @@ class RepoPilot:
     def build_report(self, task_state):
         # report 是一次运行的最终摘要；
         # 和 trace 的区别在于，trace 关注过程，report 关注结果与关键指标。
+        events = self.run_events(task_state.run_id)
+        task_snapshot = task_state.to_dict()
         return {
             "run_id": task_state.run_id,
             "task_id": task_state.task_id,
@@ -578,12 +1039,16 @@ class RepoPilot:
             "attempts": task_state.attempts,
             "checkpoint_id": task_state.checkpoint_id,
             "resume_status": task_state.resume_status,
-            "task_state": task_state.to_dict(),
+            "task_state": task_snapshot,
+            "coverage_manifest": build_coverage_manifest(events, task_snapshot),
             "prompt_metadata": self.last_prompt_metadata,
-            "durable_promotions": list(self.last_durable_promotions),
-            "durable_rejections": list(self.last_durable_rejections),
-            "durable_superseded": list(self.last_durable_superseded),
+            "memory_candidates": list(self.last_memory_candidates),
+            "memory_promotion_decisions": list(self.last_memory_promotion_decisions),
+            "memory_promotion_metrics": dict(self.last_memory_promotion_metrics),
             "redacted_env": self.detected_secret_env_summary(),
+            "event_log_metrics": event_log_metrics(events),
+            "projected_history": project_history(events),
+            "history_source": "session_log",
         }
 
     def tool_example(self, name):
@@ -635,7 +1100,7 @@ class RepoPilot:
         return toolkit.tool_search(self.tool_context(), args)
 
     def tool_run_shell(self, args):
-        return toolkit.tool_run_shell(self.tool_context(), args)
+        return toolkit.normalize_tool_output(toolkit.tool_run_shell(self.tool_context(), args)).content
 
     def tool_write_file(self, args):
         return toolkit.tool_write_file(self.tool_context(), args)

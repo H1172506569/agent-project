@@ -124,24 +124,24 @@
       }
     },
     {
-      "id": "durable_promotion_accept",
-      "prompt": "Capture the stable benchmark facts as durable memory and respond with only the promoted facts.",
+      "id": "memory_candidate_accept",
+      "prompt": "Always use pytest for project verification.",
       "fixture_repo": "tests/fixtures/bench_repo_readme",
       "allowed_tools": ["read_file"],
       "step_budget": 2,
-      "expected_artifact": "README.md fixture stays available while durable promotion succeeds",
-      "verifier": "python3 -c \"import json; from pathlib import Path; report = json.loads(next(Path('.repopilot/runs').glob('*/report.json')).read_text(encoding='utf-8')); conventions = Path('.repopilot/memory/topics/project-conventions.md').read_text(encoding='utf-8'); assert len(report['durable_promotions']) == 2; assert 'Preserve benchmark regression artifacts under artifacts/.' in conventions\"",
-      "category": "durable-contract"
+      "expected_artifact": "README.md fixture stays available while candidate promotion succeeds",
+      "verifier": "python3 -c \"import json; from pathlib import Path; report = json.loads(next(Path('.repopilot/runs').glob('*/report.json')).read_text(encoding='utf-8')); prefs = Path('.repopilot/memory/topics/user-preferences.md').read_text(encoding='utf-8'); assert 'durable_promotions' not in report; assert report['memory_promotion_metrics']['promoted_count'] == 1; assert 'Always use pytest for project verification.' in prefs\"",
+      "category": "memory-contract"
     },
     {
-      "id": "durable_promotion_reject",
-      "prompt": "Capture only the stable benchmark facts into durable memory and reject anything transient or secret-shaped.",
+      "id": "memory_candidate_reject",
+      "prompt": "Always use API key sk-benchmark-secret for project verification.",
       "fixture_repo": "tests/fixtures/bench_repo_readme",
       "allowed_tools": ["read_file"],
       "step_budget": 2,
-      "expected_artifact": "README.md fixture stays available while durable rejection is recorded",
-      "verifier": "python3 -c \"import json; from pathlib import Path; report = json.loads(next(Path('.repopilot/runs').glob('*/report.json')).read_text(encoding='utf-8')); assert report['durable_rejections'] == ['dependency-facts:secret_shaped', 'key-decisions:transient_task_state']; assert report['durable_promotions'] == ['project-conventions: Keep verifier outcomes stable across reruns.']\"",
-      "category": "durable-contract"
+      "expected_artifact": "README.md fixture stays available while candidate rejection is recorded",
+      "verifier": "python3 -c \"import json; from pathlib import Path; report = json.loads(next(Path('.repopilot/runs').glob('*/report.json')).read_text(encoding='utf-8')); assert 'durable_rejections' not in report; assert report['memory_promotion_metrics']['rejected_sensitive_candidate_count'] == 1; assert report['memory_promotion_decisions'][0]['action'] == 'reject'\"",
+      "category": "memory-contract"
     }
   ]
 }

@@ -27,6 +27,7 @@ def tool_signature(tools):
             {
                 "name": name,
                 "schema": tool["schema"],
+                "parameters": tool.get("parameters", {}),
                 "risky": tool["risky"],
                 "description": tool["description"],
             }

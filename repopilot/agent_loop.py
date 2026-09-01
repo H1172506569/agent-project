@@ -4,6 +4,7 @@ import time
 
 from .checkpoint import CHECKPOINT_NONE_STATUS, CHECKPOINT_PARTIAL_STALE_STATUS, CHECKPOINT_WORKSPACE_MISMATCH_STATUS
 from .task_state import TaskState
+from .terminal_feedback import thinking_spinner
 from .workspace import clip, now
 
 
@@ -60,12 +61,13 @@ class AgentLoop:
             prompt_cache_retention = "in_memory"
         model_started_at = time.monotonic()
         try:
-            raw = agent.model_client.complete(
-                prompt,
-                agent.max_new_tokens,
-                prompt_cache_key=prompt_cache_key,
-                prompt_cache_retention=prompt_cache_retention,
-            )
+            with thinking_spinner(enabled=getattr(agent, "interactive_feedback", True)):
+                raw = agent.model_client.complete(
+                    prompt,
+                    agent.max_new_tokens,
+                    prompt_cache_key=prompt_cache_key,
+                    prompt_cache_retention=prompt_cache_retention,
+                )
         except Exception as exc:
             completion_metadata = dict(getattr(agent.model_client, "last_completion_metadata", {}) or {})
             if completion_metadata:
@@ -96,7 +98,7 @@ class AgentLoop:
         agent = self.agent
         agent.record({"role": "assistant", "content": final, "created_at": now()})
         task_state.finish_success(final)
-        agent.promote_durable_memory(user_message, final)
+        agent.promote_memory_candidates(task_state)
         checkpoint = agent.create_checkpoint(task_state, user_message, trigger="run_finished")
         agent.run_store.write_task_state(task_state)
         agent.emit_trace(
@@ -123,13 +125,12 @@ class AgentLoop:
     def run(self, user_message):
         agent = self.agent
         run_started_at = time.monotonic()
-        agent.memory.set_task_summary(user_message)
-        agent.record({"role": "user", "content": user_message, "created_at": now()})
-
         task_state = TaskState.create(run_id=agent.new_run_id(), task_id=agent.new_task_id(), user_request=user_message)
         task_state.resume_status = agent.resume_state.get("status", CHECKPOINT_NONE_STATUS)
         agent.current_task_state = task_state
         agent.current_run_dir = agent.run_store.start_run(task_state)
+        agent.memory.set_task_summary(user_message)
+        agent.record({"role": "user", "content": user_message, "created_at": now()})
         agent.emit_trace(
             task_state,
             "run_started",
@@ -300,7 +301,7 @@ class AgentLoop:
             final = "Stopped after reaching the step limit without a final answer."
             task_state.stop_step_limit(final)
         agent.record({"role": "assistant", "content": final, "created_at": now()})
-        agent.promote_durable_memory(user_message, final)
+        agent.promote_memory_candidates(task_state)
         agent.run_store.write_task_state(task_state)
         checkpoint = agent.create_checkpoint(task_state, user_message, trigger=task_state.stop_reason or "run_stopped")
         agent.emit_trace(

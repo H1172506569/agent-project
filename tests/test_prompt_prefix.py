@@ -36,3 +36,22 @@ def test_build_prompt_prefix_renders_tools_and_workspace_metadata(tmp_path):
     assert prefix.workspace_fingerprint == workspace.fingerprint()
     assert prefix.tool_signature == tool_signature(tools)
     assert prefix.built_at == "2026-06-02T00:00:00+08:00"
+
+
+def test_tool_signature_includes_machine_readable_parameter_schema():
+    base = {
+        "read_file": {
+            "schema": {"path": "str"},
+            "parameters": {"type": "object", "required": ["path"]},
+            "risky": False,
+            "description": "Read",
+        }
+    }
+    changed = {
+        "read_file": {
+            **base["read_file"],
+            "parameters": {"type": "object", "required": ["path", "start"]},
+        }
+    }
+
+    assert tool_signature(base) != tool_signature(changed)

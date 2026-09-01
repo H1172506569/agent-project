@@ -33,7 +33,7 @@ def test_context_manager_assembles_sections_in_expected_order(tmp_path):
     assert prompt.index("Relevant memory:") < prompt.index("Transcript:")
     assert prompt.index("Transcript:") < prompt.index("Current user request:")
     assert prompt.rstrip().endswith("Current user request:\nWhere is the deploy key?")
-    assert metadata["section_order"] == ["prefix", "memory", "relevant_memory", "history", "current_request"]
+    assert metadata["section_order"] == ["prefix", "project_rules", "memory", "relevant_memory", "history", "current_request"]
 
 
 def test_context_manager_reduces_relevant_memory_before_history_and_preserves_newer_context(tmp_path):
@@ -237,3 +237,53 @@ def test_context_manager_relevant_memory_can_mix_durable_notes(tmp_path):
     assert metadata["relevant_memory"]["selected_durable_count"] == 1
     assert metadata["relevant_memory"]["selected_sources"] == ["project-conventions"]
     assert metadata["relevant_memory"]["selected_kinds"] == ["durable"]
+
+
+def test_context_manager_injects_only_path_matched_project_rules(tmp_path):
+    rules_dir = tmp_path / ".repopilot"
+    rules_dir.mkdir()
+    (rules_dir / "rules.json").write_text(
+        '{"include":["repopilot/**/*.py","tests/**/*.py"],"exclude":["tests/fixtures/**"],"rules":['
+        '{"path":"repopilot/**/*.py","rule":"Runtime code should keep dependencies minimal."},'
+        '{"path":"tests/**/*.py","rule":"Tests should use FakeModelClient and avoid network."},'
+        '{"path":"**/*.md","rule":"Markdown docs should be concise."}'
+        ']}',
+        encoding="utf-8",
+    )
+    agent = build_agent(tmp_path, [])
+
+    prompt, metadata = ContextManager(agent).build("Update repopilot/runtime.py and tests/fixtures/sample.py")
+
+    rules_section = prompt.split("Project rules:\n", 1)[1].split("\n\nMemory:", 1)[0]
+    assert "Runtime code should keep dependencies minimal." in rules_section
+    assert "Tests should use FakeModelClient" not in rules_section
+    assert "Markdown docs should be concise." not in rules_section
+    assert metadata["project_rules"]["candidate_paths"] == ["repopilot/runtime.py", "tests/fixtures/sample.py"]
+    assert metadata["project_rules"]["excluded_paths"] == ["tests/fixtures/sample.py"]
+    assert metadata["project_rules"]["matched_count"] == 1
+    assert metadata["project_rules"]["all_rule_chars"] > metadata["project_rules"]["rendered_chars"]
+
+
+def test_context_manager_project_rules_can_match_recent_tool_history(tmp_path):
+    rules_dir = tmp_path / ".repopilot"
+    rules_dir.mkdir()
+    (rules_dir / "rules.json").write_text(
+        '{"rules":[{"path":"tests/**/*.py","rule":"Tests should use FakeModelClient and avoid network."}]}',
+        encoding="utf-8",
+    )
+    agent = build_agent(tmp_path, [])
+    agent.record(
+        {
+            "role": "tool",
+            "name": "read_file",
+            "args": {"path": "tests/test_agent_loop.py"},
+            "content": "",
+            "created_at": "2026-04-07T09:00:00+00:00",
+        }
+    )
+
+    prompt, metadata = ContextManager(agent).build("Continue the same test change")
+
+    assert "Tests should use FakeModelClient and avoid network." in prompt
+    assert metadata["project_rules"]["candidate_paths"] == ["tests/test_agent_loop.py"]
+    assert metadata["project_rules"]["matched_count"] == 1

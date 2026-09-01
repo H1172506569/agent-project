@@ -1,12 +1,14 @@
 from .cli import build_agent, build_arg_parser, build_welcome, main
 from .providers.clients import AnthropicCompatibleModelClient, FakeModelClient, OllamaModelClient, OpenAICompatibleModelClient
 from .runtime import RepoPilot, SessionStore
+from .session_log import SessionLogStore
 from .workspace import WorkspaceContext
 
 __all__ = [
     "AnthropicCompatibleModelClient",
     "FakeModelClient",
     "RepoPilot",
+    "SessionLogStore",
     "build_agent",
     "build_arg_parser",
     "build_welcome",

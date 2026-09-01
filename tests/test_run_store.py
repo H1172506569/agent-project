@@ -64,3 +64,11 @@ def test_run_store_tolerates_missing_final_report(tmp_path):
 
     assert store.trace_path(state.run_id).exists()
     assert not store.report_path(state.run_id).exists()
+
+
+def test_run_store_does_not_create_per_run_event_log(tmp_path):
+    store = RunStore(tmp_path / ".repopilot" / "runs")
+    state = TaskState.create(run_id="run_005", task_id="task_005", user_request="Project event log.")
+    store.start_run(state)
+
+    assert not (store.run_dir(state.run_id) / "event_log.jsonl").exists()

@@ -23,7 +23,7 @@ def test_load_benchmark_validates_fixed_schema():
         "text-edit": 2,
         "tool-boundary": 3,
         "recovery": 3,
-        "durable-contract": 2,
+        "memory-contract": 2,
     }
     for task in benchmark["tasks"]:
         assert {"id", "prompt", "fixture_repo", "allowed_tools", "step_budget", "expected_artifact", "verifier", "category"} <= set(task)
@@ -131,7 +131,7 @@ def test_run_fixed_benchmark_reports_metadata_and_success_definition(tmp_path):
         assert row["stop_reason"] == "final_answer_returned"
 
 
-def test_run_fixed_benchmark_covers_recovery_and_durable_contract_rows(tmp_path):
+def test_run_fixed_benchmark_covers_recovery_and_memory_contract_rows(tmp_path):
     artifact = run_fixed_benchmark(
         benchmark_path=Path("benchmarks/coding_tasks.json"),
         artifact_path=tmp_path / "benchmark-v1.json",
@@ -139,7 +139,7 @@ def test_run_fixed_benchmark_covers_recovery_and_durable_contract_rows(tmp_path)
     )
 
     context_row = next(item for item in artifact["rows"] if item["id"] == "context_reduction_checkpoint")
-    durable_row = next(item for item in artifact["rows"] if item["id"] == "durable_promotion_reject")
+    memory_row = next(item for item in artifact["rows"] if item["id"] == "memory_candidate_reject")
 
     trace_path = (tmp_path / "workspaces" / context_row["run_dir_relpath"] / "trace.jsonl").resolve()
     trace_events = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
@@ -148,10 +148,8 @@ def test_run_fixed_benchmark_covers_recovery_and_durable_contract_rows(tmp_path)
         event.get("event") == "checkpoint_created" and event.get("trigger") == "context_reduction"
         for event in trace_events
     )
-    assert durable_row["report"]["durable_rejections"] == [
-        "dependency-facts:secret_shaped",
-        "key-decisions:transient_task_state",
-    ]
+    assert "durable_rejections" not in memory_row["report"]
+    assert memory_row["report"]["memory_promotion_metrics"]["rejected_sensitive_candidate_count"] == 1
 
 
 def test_run_harness_regression_v2_writes_named_artifact(tmp_path):

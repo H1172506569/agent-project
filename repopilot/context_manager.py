@@ -9,23 +9,28 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
+from .context_compression import render_tool_round_compressed_history
+from .rules import RuleResolver
+
 
 DEFAULT_TOTAL_BUDGET = 12000
 DEFAULT_SECTION_BUDGETS = {
     "prefix": 3600,
+    "project_rules": 800,
     "memory": 1600,
     "relevant_memory": 1200,
     "history": 5200,
 }
 DEFAULT_SECTION_FLOORS = {
     "prefix": 1200,
+    "project_rules": 200,
     "memory": 400,
     "relevant_memory": 300,
     "history": 1500,
 }
 # 当 prompt 超预算时，会优先压缩这些 section。
-DEFAULT_REDUCTION_ORDER = ("relevant_memory", "history", "memory", "prefix")
-SECTION_ORDER = ("prefix", "memory", "relevant_memory", "history", "current_request")
+DEFAULT_REDUCTION_ORDER = ("relevant_memory", "project_rules", "history", "memory", "prefix")
+SECTION_ORDER = ("prefix", "project_rules", "memory", "relevant_memory", "history", "current_request")
 CURRENT_REQUEST_SECTION = "current_request"
 RELEVANT_MEMORY_LIMIT = 3
 
@@ -105,11 +110,14 @@ class ContextManager:
             memory_enabled = self.agent.feature_enabled("memory")
             relevant_memory_enabled = self.agent.feature_enabled("relevant_memory")
             context_reduction_enabled = self.agent.feature_enabled("context_reduction")
+        rule_context = self._resolve_project_rules(user_message)
         section_texts = {
             "prefix": str(getattr(self.agent, "prefix", "")),
+            "project_rules": rule_context.render(),
             "memory": "Memory:\n- disabled" if not memory_enabled else str(self.agent.memory_text()),
             "history": "",
             CURRENT_REQUEST_SECTION: f"Current user request:\n{user_message}",
+            "_project_rule_details": rule_context,
         }
         checkpoint_text = ""
         if hasattr(self.agent, "render_checkpoint_text"):
@@ -189,10 +197,16 @@ class ContextManager:
         else:
             relevant_lines.append("- none")
         relevant_raw = "\n".join(relevant_lines)
-        history = list(getattr(self.agent, "session", {}).get("history", []))
+        history = self._history_items()
         history_raw = self._raw_history_text(history)
         return {
             "prefix": SectionRender(raw=section_texts["prefix"], budget=len(section_texts["prefix"]), rendered=section_texts["prefix"], details={}),
+            "project_rules": SectionRender(
+                raw=section_texts["project_rules"],
+                budget=len(section_texts["project_rules"]),
+                rendered=section_texts["project_rules"],
+                details=self._rule_details(section_texts),
+            ),
             "memory": SectionRender(raw=section_texts["memory"], budget=len(section_texts["memory"]), rendered=section_texts["memory"], details={}),
             "relevant_memory": SectionRender(
                 raw=relevant_raw,
@@ -234,11 +248,48 @@ class ContextManager:
                 rendered[section] = self._render_relevant_memory(selected_notes or [], int(budget or 0))
             elif section == "history":
                 rendered[section] = self._render_history_section(int(budget or 0))
+            elif section == "project_rules":
+                raw = section_texts[section]
+                rendered_text = _tail_clip(raw, int(budget)) if budget is not None else raw
+                rendered[section] = SectionRender(raw=raw, budget=int(budget) if budget is not None else 0, rendered=rendered_text, details=self._rule_details(section_texts))
             else:
                 raw = section_texts[section]
                 rendered_text = _tail_clip(raw, int(budget)) if budget is not None else raw
                 rendered[section] = SectionRender(raw=raw, budget=int(budget) if budget is not None else 0, rendered=rendered_text, details={})
         return rendered
+
+    def _resolve_project_rules(self, user_message):
+        resolver = RuleResolver.from_workspace(getattr(self.agent, "root", "."))
+        history = self._history_items()
+        return resolver.match_context(user_message, history=history)
+
+    def _rule_details(self, section_texts):
+        context = section_texts.get("_project_rule_details")
+        if context is None:
+            return {
+                "candidate_paths": [],
+                "excluded_paths": [],
+                "matched_rules": [],
+                "matched_count": 0,
+                "all_rule_chars": 0,
+            }
+        return {
+            "candidate_paths": list(context.candidate_paths),
+            "excluded_paths": list(context.excluded_paths),
+            "matched_rules": list(context.matched_rules),
+            "matched_count": len(context.matched_rules),
+            "all_rule_chars": int(context.all_rule_chars),
+        }
+
+    def _history_items(self):
+        if hasattr(self.agent, "projected_history"):
+            return list(self.agent.projected_history())
+        return list(getattr(self.agent, "session", {}).get("history", []))
+
+    def _history_source(self):
+        if hasattr(self.agent, "history_source"):
+            return str(self.agent.history_source())
+        return "session"
 
     def _render_relevant_memory(self, selected_notes, budget):
         header = "Relevant memory:"
@@ -295,7 +346,19 @@ class ContextManager:
         return max(1, usable // note_count)
 
     def _render_history_section(self, budget):
-        history = list(getattr(self.agent, "session", {}).get("history", []))
+        history = self._history_items()
+        persisted = self._render_persisted_history_summary(history, budget)
+        if persisted is not None:
+            return persisted
+        if hasattr(self.agent, "feature_enabled") and self.agent.feature_enabled("tool_round_compression"):
+            compressed = render_tool_round_compressed_history(history, budget)
+            return SectionRender(
+                raw=compressed.raw,
+                budget=budget,
+                rendered=compressed.rendered,
+                details=compressed.details,
+            )
+
         raw = self._raw_history_text(history)
         if not history:
             rendered = "Transcript:\n- empty"
@@ -309,6 +372,12 @@ class ContextManager:
                     "collapsed_duplicate_reads": 0,
                     "reused_file_summary_count": 0,
                     "summarized_tool_count": 0,
+                    "context_strategy": "section_clipping",
+                    "active_round_count": 0,
+                    "compressed_round_count": 0,
+                    "compression_failure_count": 0,
+                    "retained_file_paths": [],
+                    "retained_failed_tool_count": 0,
                 },
             )
 
@@ -354,9 +423,58 @@ class ContextManager:
                 "recent_window": recent_window,
                 "recent_start": recent_start,
                 "rendered_entries": rendered_entries,
+                "context_strategy": "section_clipping",
+                "active_round_count": 0,
+                "compressed_round_count": 0,
+                "compression_failure_count": 0,
+                "retained_file_paths": [],
+                "retained_failed_tool_count": 0,
                 **history_details,
             },
         )
+
+
+    def _render_persisted_history_summary(self, history, budget):
+        if not hasattr(self.agent, "feature_enabled") or not self.agent.feature_enabled("adaptive_context_compression"):
+            return None
+        if not hasattr(self.agent, "compressed_history_summary"):
+            return None
+        summary = self.agent.compressed_history_summary()
+        if not summary:
+            return None
+        source_length = int(summary.get("source_history_length", 0) or 0)
+        if source_length <= 0:
+            return None
+        raw = self._raw_history_text(history)
+        rendered_lines = []
+        base = str(summary.get("rendered", "")).strip()
+        if base:
+            rendered_lines.extend(base.splitlines())
+        tail = history[source_length:]
+        if tail:
+            rendered_lines.append("New history since compression:")
+            for item in tail:
+                rendered_lines.extend(self._render_history_item(item, 900))
+        if not rendered_lines:
+            rendered_lines = ["Transcript:", "- empty"]
+        if rendered_lines[0] != "Transcript:":
+            rendered_lines.insert(0, "Transcript:")
+        rendered = "\n".join(rendered_lines)
+        if budget > 0 and len(rendered) > budget:
+            rendered = _tail_clip(rendered, budget)
+        details = dict(summary.get("details") or {})
+        details.update(
+            {
+                "context_strategy": "persisted_tool_round_compression",
+                "persisted_summary_used": True,
+                "persisted_summary_mode": str(summary.get("mode", "")),
+                "persisted_source_history_length": source_length,
+                "persisted_tail_entries": len(tail),
+                "persisted_raw_chars": int(summary.get("raw_chars", 0) or 0),
+                "persisted_rendered_chars": int(summary.get("rendered_chars", 0) or 0),
+            }
+        )
+        return SectionRender(raw=raw, budget=budget, rendered=rendered, details=details)
 
     def _compressed_history_entries(self, history, recent_start):
         entries = []
@@ -446,6 +564,7 @@ class ContextManager:
         return "\n\n".join(
             [
                 rendered["prefix"].rendered,
+                rendered["project_rules"].rendered,
                 rendered["memory"].rendered,
                 rendered["relevant_memory"].rendered,
                 rendered["history"].rendered,
@@ -478,6 +597,15 @@ class ContextManager:
             "sections": section_metadata,
             "budget_reductions": reduction_log,
             "reduction_order": list(self.reduction_order),
+            "project_rules": {
+                "candidate_paths": list(rendered["project_rules"].details.get("candidate_paths", [])),
+                "excluded_paths": list(rendered["project_rules"].details.get("excluded_paths", [])),
+                "matched_rules": list(rendered["project_rules"].details.get("matched_rules", [])),
+                "matched_count": int(rendered["project_rules"].details.get("matched_count", 0)),
+                "all_rule_chars": int(rendered["project_rules"].details.get("all_rule_chars", 0)),
+                "raw_chars": rendered["project_rules"].raw_chars,
+                "rendered_chars": rendered["project_rules"].rendered_chars,
+            },
             "relevant_memory": {
                 "limit": RELEVANT_MEMORY_LIMIT,
                 "selected_count": len(selected_notes),
@@ -499,6 +627,19 @@ class ContextManager:
                 "collapsed_duplicate_reads": int(rendered["history"].details.get("collapsed_duplicate_reads", 0)),
                 "reused_file_summary_count": int(rendered["history"].details.get("reused_file_summary_count", 0)),
                 "summarized_tool_count": int(rendered["history"].details.get("summarized_tool_count", 0)),
+                "context_strategy": str(rendered["history"].details.get("context_strategy", "section_clipping")),
+                "active_round_count": int(rendered["history"].details.get("active_round_count", 0)),
+                "compressed_round_count": int(rendered["history"].details.get("compressed_round_count", 0)),
+                "compressed_message_count": int(rendered["history"].details.get("compressed_message_count", 0)),
+                "compressed_line_count": int(rendered["history"].details.get("compressed_line_count", 0)),
+                "retained_file_paths": list(rendered["history"].details.get("retained_file_paths", [])),
+                "retained_failed_tool_count": int(rendered["history"].details.get("retained_failed_tool_count", 0)),
+                "compression_failure_count": int(rendered["history"].details.get("compression_failure_count", 0)),
+                "persisted_summary_used": bool(rendered["history"].details.get("persisted_summary_used", False)),
+                "persisted_summary_mode": str(rendered["history"].details.get("persisted_summary_mode", "")),
+                "persisted_source_history_length": int(rendered["history"].details.get("persisted_source_history_length", 0)),
+                "persisted_tail_entries": int(rendered["history"].details.get("persisted_tail_entries", 0)),
+                "source": self._history_source(),
             },
             "current_request": {
                 "text": user_message,

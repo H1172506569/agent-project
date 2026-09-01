@@ -1,7 +1,8 @@
-"""运行工件落盘。
+"""Per-run artifact persistence.
 
-session.json 负责保存“可恢复的会话状态”；RunStore 负责保存“单次运行的审计工件”，
-例如 task_state、trace 和 report。两者分开后，恢复现场和复盘证据不会混在一起。
+The append-only session log is the source of truth. RunStore only keeps
+per-run artifacts that are useful for inspection, evaluation, and crash
+diagnostics: task_state, trace, and report.
 """
 
 import json
@@ -46,14 +47,34 @@ class RunStore:
         self._write_json_atomic(path, task_state.to_dict())
         return path
 
-    def append_trace(self, task_state, event):
-        path = self.trace_path(task_state)
+    def append_jsonl(self, path, event):
         path.parent.mkdir(parents=True, exist_ok=True)
-        # trace 采用 jsonl 追加写入，原因是 agent 运行过程是流式事件序列，
-        # 逐条落盘比“最后一次性写整份 trace”更稳，也更适合调试。
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(event, sort_keys=True, ensure_ascii=True))
             handle.write("\n")
+        return path
+
+    def append_trace(self, task_state, event):
+        # trace 采用 jsonl 追加写入，原因是 agent 运行过程是流式事件序列，
+        # 逐条落盘比“最后一次性写整份 trace”更稳，也更适合调试。
+        return self.append_jsonl(self.trace_path(task_state), event)
+
+    def write_trace(self, task_state, events):
+        path = self.trace_path(task_state)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            delete=False,
+            dir=str(path.parent),
+            prefix=path.name + ".",
+            suffix=".tmp",
+        ) as handle:
+            for event in events:
+                handle.write(json.dumps(event, sort_keys=True, ensure_ascii=True))
+                handle.write("\n")
+            temp_name = handle.name
+        Path(temp_name).replace(path)
         return path
 
     def write_report(self, task_state, report):
