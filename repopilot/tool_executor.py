@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+from .terminal_feedback import thinking_spinner, tool_status_label
 from .tools import normalize_tool_output
 from .workspace import clip
 
@@ -88,8 +89,9 @@ class ToolExecutor:
             )
 
         if agent.repeated_tool_call(name, args):
+            hint = agent.repeated_tool_call_hint(name, args) if hasattr(agent, "repeated_tool_call_hint") else "choose a different tool or return a final answer"
             return ToolExecutionResult(
-                content=f"error: repeated identical tool call for {name}; choose a different tool or return a final answer",
+                content=f"error: repeated identical tool call for {name}; {hint}",
                 metadata=_metadata(
                     "rejected",
                     tool_error_code="repeated_identical_call",
@@ -113,7 +115,13 @@ class ToolExecutor:
         before_snapshot = agent.capture_workspace_snapshot() if tool["risky"] else {}
         after_snapshot = before_snapshot
         try:
-            output = normalize_tool_output(tool["run"](args))
+            status_args = agent.redact_artifact(args)
+            with thinking_spinner(
+                label=tool_status_label(name, status_args),
+                enabled=getattr(agent, "interactive_feedback", True),
+                persist_on_exit=True,
+            ):
+                output = normalize_tool_output(tool["run"](args))
             content = clip(output.content)
             data = dict(output.data or {})
             after_snapshot = agent.capture_workspace_snapshot() if tool["risky"] else before_snapshot

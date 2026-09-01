@@ -350,4 +350,43 @@ def test_persisted_context_compression_summary_is_reused_with_new_tail(tmp_path)
     assert "NEW_TAIL_RESULT" in prompt
 
 
+def test_stale_async_context_compression_does_not_overwrite_newer_summary(tmp_path):
+    agent = build_agent(
+        tmp_path,
+        feature_flags={"adaptive_context_compression": True, "tool_round_compression": False},
+    )
+    for index in range(3):
+        record_tool(agent, "read_file", {"path": f"src/stale_{index}.py"}, "S" * 180, index)
+    stale_snapshot = list(agent.projected_history())
+    stale_digest = agent._history_digest(stale_snapshot)
+    newer_state = {
+        "version": 1,
+        "status": "ready",
+        "mode": "sync",
+        "backend": "deterministic",
+        "trigger_ratio": 0.9,
+        "source_history_length": len(stale_snapshot),
+        "source_history_digest": stale_digest,
+        "raw_chars": 100,
+        "rendered_chars": 12,
+        "rendered": "SYNC_SUMMARY",
+        "details": {"context_compression_backend": "deterministic"},
+        "started_at": "2026-04-07T09:00:00+00:00",
+        "updated_at": "2026-04-07T09:00:01+00:00",
+        "failure": "",
+    }
+    agent.session["context_compression"] = dict(newer_state)
+
+    state = agent._run_context_compression(
+        mode="async",
+        trigger_ratio=0.7,
+        history_budget=220,
+        history_snapshot=stale_snapshot,
+    )
+
+    assert state["status"] == "ready"
+    assert state["write_skipped"] is True
+    assert state["write_skip_reason"] == "stale_async_context_compression"
+    assert agent.session["context_compression"] == newer_state
+
 

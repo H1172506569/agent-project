@@ -4,6 +4,7 @@
 如何做参数校验，以及最终如何执行，都是在这里定义的。
 """
 
+import locale
 import shutil
 import subprocess
 import textwrap
@@ -27,6 +28,23 @@ def normalize_tool_output(value):
     return ToolOutput(content=str(value), data={})
 
 
+def decode_process_output(value):
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    encodings = []
+    for encoding in ("utf-8", locale.getpreferredencoding(False)):
+        if encoding and encoding not in encodings:
+            encodings.append(encoding)
+    for encoding in encodings:
+        try:
+            return value.decode(encoding)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return value.decode("utf-8", errors="replace")
+
+
 BASE_TOOL_SPECS = {
     "list_files": {
         "schema": {"path": "str='.'"},
@@ -34,7 +52,7 @@ BASE_TOOL_SPECS = {
         "description": "List files in the workspace.",
     },
     "read_file": {
-        "schema": {"path": "str", "start": "int=1", "end": "int=200"},
+        "schema": {"path": "str", "start": "int=1", "end": "int=400"},
         "risky": False,
         "description": "Read a UTF-8 file by line range.",
     },
@@ -77,7 +95,7 @@ TOOL_PARAMETER_SCHEMAS = {
         "properties": {
             "path": {"type": "string"},
             "start": {"type": "integer", "default": 1, "minimum": 1},
-            "end": {"type": "integer", "default": 200, "minimum": 1},
+            "end": {"type": "integer", "default": 400, "minimum": 1},
         },
         "required": ["path"],
         "additionalProperties": False,
@@ -181,7 +199,7 @@ def validate_tool(context, name, args):
         if not path.is_file():
             raise ValueError("path is not a file")
         start = int(args.get("start", 1))
-        end = int(args.get("end", 200))
+        end = int(args.get("end", 400))
         if start < 1 or end < start:
             raise ValueError("invalid line range")
         return
@@ -256,7 +274,7 @@ def tool_read_file(context, args):
     if not path.is_file():
         raise ValueError("path is not a file")
     start = int(args.get("start", 1))
-    end = int(args.get("end", 200))
+    end = int(args.get("end", 400))
     if start < 1 or end < start:
         raise ValueError("invalid line range")
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -276,9 +294,13 @@ def tool_search(context, args):
             ["rg", "-n", "--smart-case", "--max-count", "200", pattern, str(path)],
             cwd=context.root,
             capture_output=True,
-            text=True,
+            text=False,
         )
-        return result.stdout.strip() or result.stderr.strip() or "(no matches)"
+        stdout = decode_process_output(result.stdout).strip()
+        stderr = decode_process_output(result.stderr).strip()
+        if result.returncode not in (0, 1):
+            return stderr or "search failed"
+        return stdout or "(no matches)"
 
     matches = []
     files = [path] if path.is_file() else [
@@ -306,14 +328,14 @@ def tool_run_shell(context, args):
         cwd=context.root,
         shell=True,
         capture_output=True,
-        text=True,
+        text=False,
         timeout=timeout,
         # 这里传入的是过滤后的环境变量，而不是直接继承整个父 shell 环境，
         # 目的是减少敏感信息被意外带进命令执行环境的风险。
         env=context.shell_env(),
     )
-    stdout = result.stdout.strip() or "(empty)"
-    stderr = result.stderr.strip() or "(empty)"
+    stdout = decode_process_output(result.stdout).strip() or "(empty)"
+    stderr = decode_process_output(result.stderr).strip() or "(empty)"
     content = textwrap.dedent(
         f"""\
         exit_code: {result.returncode}

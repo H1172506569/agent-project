@@ -134,7 +134,7 @@ def test_candidate_generation_splits_multiple_user_preferences():
     ]
 
 
-def test_agent_loop_promotes_memory_candidates_into_event_log_and_report(tmp_path):
+def test_agent_loop_promotes_memory_candidates_into_session_log_and_report(tmp_path):
     (tmp_path / "README.md").write_text("demo\n", encoding="utf-8")
     workspace = WorkspaceContext.build(tmp_path)
     store = SessionStore(tmp_path / ".repopilot" / "sessions")
@@ -147,7 +147,7 @@ def test_agent_loop_promotes_memory_candidates_into_event_log_and_report(tmp_pat
 
     assert agent.ask("以后都用中文解释。") == "Done."
 
-    events = agent.run_store.load_events(agent.current_task_state.run_id)
+    events = agent.run_events(agent.current_task_state.run_id)
     report = json.loads(agent.run_store.report_path(agent.current_task_state).read_text(encoding="utf-8"))
     memory_topic = tmp_path / ".repopilot" / "memory" / "topics" / "user-preferences.md"
 

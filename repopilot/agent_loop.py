@@ -4,6 +4,7 @@ import time
 
 from .checkpoint import CHECKPOINT_NONE_STATUS, CHECKPOINT_PARTIAL_STALE_STATUS, CHECKPOINT_WORKSPACE_MISMATCH_STATUS
 from .task_state import TaskState
+from .terminal_feedback import thinking_spinner
 from .workspace import clip, now
 
 
@@ -60,12 +61,13 @@ class AgentLoop:
             prompt_cache_retention = "in_memory"
         model_started_at = time.monotonic()
         try:
-            raw = agent.model_client.complete(
-                prompt,
-                agent.max_new_tokens,
-                prompt_cache_key=prompt_cache_key,
-                prompt_cache_retention=prompt_cache_retention,
-            )
+            with thinking_spinner(enabled=getattr(agent, "interactive_feedback", True)):
+                raw = agent.model_client.complete(
+                    prompt,
+                    agent.max_new_tokens,
+                    prompt_cache_key=prompt_cache_key,
+                    prompt_cache_retention=prompt_cache_retention,
+                )
         except Exception as exc:
             completion_metadata = dict(getattr(agent.model_client, "last_completion_metadata", {}) or {})
             if completion_metadata:

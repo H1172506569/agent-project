@@ -23,12 +23,13 @@ from .context_compression import (
 )
 from .context_manager import ContextManager
 from .coverage_manifest import build_coverage_manifest
-from .event_log import event_log_metrics, project_history
+from .event_log import event_log_metrics, project_history, project_trace
 from .memory_promotion import MemoryPromotionPolicy, generate_memory_candidates, memory_promotion_metrics
 from .checkpoint import CHECKPOINT_NONE_STATUS
 from .prompt_prefix import build_prompt_prefix, tool_signature
 from .providers.clients import AnthropicCompatibleModelClient
 from .run_store import RunStore
+from .session_log import SessionLogStore
 from .session_store import SessionStore
 from .tool_context import ToolContext
 from .tool_executor import ToolExecutor
@@ -76,7 +77,7 @@ class RepoPilot:
         session=None,
         run_store=None,
         approval_policy="ask",
-        max_steps=6,
+        max_steps=15,
         max_new_tokens=512,
         depth=0,
         max_depth=1,
@@ -86,9 +87,11 @@ class RepoPilot:
         feature_flags=None,
         allowed_tools=None,
         context_compression_model_client=None,
+        interactive_feedback=True,
     ):
         self.model_client = model_client
         self.context_compression_model_client = context_compression_model_client
+        self.interactive_feedback = bool(interactive_feedback)
         self.workspace = workspace
         self.root = Path(workspace.repo_root)
         self.session_store = session_store
@@ -113,6 +116,8 @@ class RepoPilot:
             "memory": memorylib.default_memory_state(),
         }
         self._ensure_session_shape()
+        self.session_log_store = SessionLogStore(self.session_store.root)
+        self.session_log_store.ensure_header(self.session)
         self.memory = memorylib.LayeredMemory(
             self.session.setdefault("memory", memorylib.default_memory_state()),
             workspace_root=self.root,
@@ -263,25 +268,20 @@ class RepoPilot:
     def projected_history(self):
         """Return the canonical history projection for prompt-time reads.
 
-        During a run, event_log.jsonl is the source of truth. session["history"]
-        remains as a compatibility/cache surface for older sessions and non-run
-        calls, but prompt construction should consume this accessor.
+        The session event log is the source of truth. session["history"] remains
+        as a compatibility/cache surface for older sessions, but prompt
+        construction should consume this accessor.
         """
-        state = self.current_task_state
-        if state is not None:
-            events = self.run_store.load_events(state.run_id)
-            history = project_history(events)
-            if history or events:
-                return history
+        events = self.session_events()
+        history = project_history(events)
+        if history or events:
+            return history
         return list(self.session.get("history", []))
 
     def history_source(self):
-        state = self.current_task_state
-        if state is None:
-            return "session"
-        events = self.run_store.load_events(state.run_id)
+        events = self.session_events()
         if events:
-            return "event_log"
+            return "session_log"
         return "session"
 
     def history_text(self):
@@ -324,12 +324,16 @@ class RepoPilot:
 
     def record_event(self, event, payload=None, task_state=None):
         state = task_state or self.current_task_state
-        if state is None:
-            return None
         payload = self.redact_artifact(payload or {})
         payload["event"] = event
-        payload["created_at"] = now()
-        return self.run_store.append_event(state, payload)
+        payload.setdefault("created_at", now())
+        return self.session_log_store.append_event(self.session, payload, task_state=state)
+
+    def session_events(self):
+        return self.session_log_store.load_events(self.session["id"])
+
+    def run_events(self, run_id):
+        return self.session_log_store.load_run_events(self.session["id"], run_id)
 
     @staticmethod
     def looks_sensitive_env_name(name):
@@ -621,9 +625,27 @@ class RepoPilot:
                 "updated_at": now(),
                 "failure": self.redact_text(str(exc)),
             }
+        write_skipped = False
+        write_skip_reason = ""
         with self._context_compression_lock:
-            self.session["context_compression"] = state
-            self.session_path = self.session_store.save(self.session)
+            current = self.session.get("context_compression", {})
+            async_state = state.get("mode") == "async"
+            write_allowed = True
+            if async_state:
+                write_allowed = (
+                    isinstance(current, dict)
+                    and current.get("status") == "pending"
+                    and current.get("mode") == "async"
+                    and current.get("backend") == state.get("backend")
+                    and current.get("source_history_digest") == state.get("source_history_digest")
+                )
+            if write_allowed:
+                self.session["context_compression"] = state
+                self.session_path = self.session_store.save(self.session)
+            else:
+                write_skipped = True
+                write_skip_reason = "stale_async_context_compression"
+                state = {**state, "write_skipped": True, "write_skip_reason": write_skip_reason}
         self.record_event(
             "context_compression_completed" if state["status"] == "ready" else "context_compression_failed",
             {
@@ -636,6 +658,8 @@ class RepoPilot:
                 "raw_chars": state["raw_chars"],
                 "rendered_chars": state["rendered_chars"],
                 "failure": state["failure"],
+                "write_skipped": write_skipped,
+                "write_skip_reason": write_skip_reason,
             },
         )
         return state
@@ -716,8 +740,8 @@ class RepoPilot:
         payload["event"] = event
         payload["created_at"] = now()
         # trace 是运行中的逐事件时间线，适合回答“这一轮 agent 到底做了什么”。
-        self.run_store.append_event(task_state, {**payload, "source": "trace"})
-        self.run_store.append_trace(task_state, payload)
+        self.record_event(event, {**payload, "source": "trace"}, task_state=task_state)
+        self.run_store.write_trace(task_state, project_trace(self.run_events(task_state.run_id)))
         return payload
 
     def capture_workspace_snapshot(self):
@@ -838,7 +862,7 @@ class RepoPilot:
         if state is None:
             return dict(self.last_memory_promotion_metrics)
 
-        events = self.run_store.load_events(state.run_id)
+        events = self.run_events(state.run_id)
         candidates = generate_memory_candidates(events)
         policy = MemoryPromotionPolicy()
         decisions = []
@@ -908,15 +932,90 @@ class RepoPilot:
         """
         return self.execute_tool(name, args).content
 
-    def repeated_tool_call(self, name, args):
-        # agent 很常见的一种坏循环，是在没有新信息的情况下反复发起同一调用。
-        # 这里提前挡掉最简单的这种循环。
-        tool_events = [item for item in self.projected_history() if item["role"] == "tool"]
-        if len(tool_events) < 2:
-            return False
-        recent = tool_events[-2:]
-        return all(item["name"] == name and item["args"] == args for item in recent)
+    def _normalized_tool_call(self, name, args):
+        args = args if isinstance(args, dict) else {}
+        name = str(name or "")
 
+        def normalized_path(value, default="."):
+            raw = str(value if value not in {None, ""} else default).strip() or default
+            try:
+                resolved = self.path(raw)
+                return resolved.relative_to(self.root).as_posix() or "."
+            except Exception:
+                return raw.replace("\\", "/")
+
+        def int_arg(key, default):
+            try:
+                return int(args.get(key, default))
+            except (TypeError, ValueError):
+                return int(default)
+
+        if name == "list_files":
+            return (name, (("path", normalized_path(args.get("path", "."))),))
+        if name == "read_file":
+            return (
+                name,
+                (
+                    ("path", normalized_path(args.get("path", ""), default="")),
+                    ("start", int_arg("start", 1)),
+                    ("end", int_arg("end", 400)),
+                ),
+            )
+        if name == "search":
+            return (
+                name,
+                (
+                    ("pattern", str(args.get("pattern", "")).strip()),
+                    ("path", normalized_path(args.get("path", "."))),
+                ),
+            )
+        if name == "run_shell":
+            return (
+                name,
+                (
+                    ("command", " ".join(str(args.get("command", "")).split())),
+                    ("timeout", int_arg("timeout", 20)),
+                ),
+            )
+        if name == "delegate":
+            return (
+                name,
+                (
+                    ("task", " ".join(str(args.get("task", "")).split())),
+                    ("max_steps", int_arg("max_steps", 3)),
+                ),
+            )
+        return (name, tuple(sorted((str(key), str(value)) for key, value in args.items())))
+
+    def repeated_tool_call_hint(self, name, args):
+        args = args if isinstance(args, dict) else {}
+        if name == "read_file":
+            try:
+                end = int(args.get("end", 400))
+            except (TypeError, ValueError):
+                end = 400
+            next_start = end + 1
+            next_end = end + 400
+            path = str(args.get("path", "the same file")).strip() or "the same file"
+            return f"read a new range instead, for example {path} lines {next_start}-{next_end}"
+        if name == "list_files":
+            return "use a more specific directory or inspect a file instead"
+        if name == "search":
+            return "change the pattern/path or inspect a matched file instead"
+        return "choose a different tool call or return a final answer"
+
+    def repeated_tool_call(self, name, args):
+        # Normalize default args before comparison so {path} and
+        # {path, start:1, end:400} are treated as the same read range.
+        current = self._normalized_tool_call(name, args)
+        tool_events = [item for item in self.projected_history() if item.get("role") == "tool"]
+        for item in reversed(tool_events):
+            previous_name = item.get("name", "")
+            if self._normalized_tool_call(previous_name, item.get("args", {})) == current:
+                return True
+            if previous_name in {"write_file", "patch_file", "run_shell"}:
+                return False
+        return False
     @staticmethod
     def new_task_id():
         return "task_" + datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
@@ -928,7 +1027,7 @@ class RepoPilot:
     def build_report(self, task_state):
         # report 是一次运行的最终摘要；
         # 和 trace 的区别在于，trace 关注过程，report 关注结果与关键指标。
-        events = self.run_store.load_events(task_state.run_id)
+        events = self.run_events(task_state.run_id)
         task_snapshot = task_state.to_dict()
         return {
             "run_id": task_state.run_id,
@@ -949,7 +1048,7 @@ class RepoPilot:
             "redacted_env": self.detected_secret_env_summary(),
             "event_log_metrics": event_log_metrics(events),
             "projected_history": project_history(events),
-            "history_source": "event_log",
+            "history_source": "session_log",
         }
 
     def tool_example(self, name):
@@ -1161,6 +1260,3 @@ class RepoPilot:
         if os.path.commonpath([str(self.root), str(resolved)]) != str(self.root):
             raise ValueError(f"path escapes workspace: {raw_path}")
         return resolved
-
-
-

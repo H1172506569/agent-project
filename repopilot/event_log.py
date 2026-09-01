@@ -16,7 +16,8 @@ def load_events(path):
 
 
 def _without_source(event):
-    return {key: value for key, value in event.items() if key != "source"}
+    hidden = {"source", "type", "version", "seq", "session_id", "run_id"}
+    return {key: value for key, value in event.items() if key not in hidden}
 
 
 def project_trace(events):

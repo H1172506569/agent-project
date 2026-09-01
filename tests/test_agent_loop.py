@@ -100,7 +100,7 @@ def test_agent_loop_persists_model_failure_before_reraising(tmp_path):
     assert report["prompt_metadata"]["stop_reason"] == "max_tokens"
 
 
-def test_agent_loop_event_log_projects_trace_and_history(tmp_path):
+def test_agent_loop_session_log_projects_run_trace_and_history(tmp_path):
     (tmp_path / "hello.txt").write_text("alpha\n", encoding="utf-8")
     agent = build_agent(
         tmp_path,
@@ -113,7 +113,7 @@ def test_agent_loop_event_log_projects_trace_and_history(tmp_path):
     assert agent.ask("Inspect hello.txt") == "Done."
 
     state = agent.current_task_state
-    events = agent.run_store.load_events(state.run_id)
+    events = agent.run_events(state.run_id)
     trace_events = [
         json.loads(line)
         for line in agent.run_store.trace_path(state.run_id).read_text(encoding="utf-8").splitlines()
@@ -122,6 +122,8 @@ def test_agent_loop_event_log_projects_trace_and_history(tmp_path):
 
     assert project_trace(events) == trace_events
     assert project_history(events) == agent.session["history"][-3:]
+    assert agent.session_log_store.path(agent.session["id"]).exists()
+    assert not (agent.run_store.run_dir(state.run_id) / "event_log.jsonl").exists()
     assert report["event_log_metrics"]["event_count"] == len(events)
     assert report["event_log_metrics"]["trace_event_count"] == len(trace_events)
     assert report["event_log_metrics"]["history_event_count"] == 3
@@ -129,7 +131,7 @@ def test_agent_loop_event_log_projects_trace_and_history(tmp_path):
 
 
 
-def test_prompt_history_is_projected_from_event_log_not_session_cache(tmp_path):
+def test_prompt_history_is_projected_from_session_log_not_session_cache(tmp_path):
     agent = build_agent(tmp_path, ["<final>Done.</final>"])
     agent.session["history"].append(
         {
@@ -145,11 +147,11 @@ def test_prompt_history_is_projected_from_event_log_not_session_cache(tmp_path):
     prompt = agent.model_client.prompts[0]
     assert "SESSION_ONLY_POISON_SHOULD_NOT_REACH_PROMPT" not in prompt
     assert "Use only event log history" in prompt
-    assert agent.last_prompt_metadata["history"]["source"] == "event_log"
-    events = agent.run_store.load_events(agent.current_task_state.run_id)
+    assert agent.last_prompt_metadata["history"]["source"] == "session_log"
+    events = agent.run_events(agent.current_task_state.run_id)
     report = agent.run_store.load_report(agent.current_task_state.run_id)
     assert report["projected_history"] == project_history(events)
-    assert report["history_source"] == "event_log"
+    assert report["history_source"] == "session_log"
     assert [item["content"] for item in project_history(events)] == ["Use only event log history", "Done."]
     assert all("SESSION_ONLY_POISON" not in item.get("content", "") for item in project_history(events))
 
