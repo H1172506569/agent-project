@@ -1,6 +1,9 @@
 from repopilot import FakeModelClient, RepoPilot, SessionStore, WorkspaceContext
 from repopilot.context_manager import ContextManager
-from repopilot.context_compression import render_tool_round_compressed_history
+from repopilot.context_compression import (
+    ACTIVE_LINE_LIMIT,
+    render_tool_round_compressed_history,
+)
 
 
 def build_agent(tmp_path, **kwargs):
@@ -390,3 +393,72 @@ def test_stale_async_context_compression_does_not_overwrite_newer_summary(tmp_pa
     assert agent.session["context_compression"] == newer_state
 
 
+def _long_tool_round(tail_lines, name="run_shell", head="collected item"):
+    """构造一条正文超过活跃区上限、关键信息落在尾部的工具轮次。"""
+    filler = "\n".join(f"{head} {index} ................" for index in range(200))
+    content = "\n".join(["exit_code: 1", "stdout:", filler, *tail_lines])
+    assert len(content) > ACTIVE_LINE_LIMIT
+    return {"role": "tool", "name": name, "args": {"command": "pytest -q"}, "content": content}
+
+
+def test_active_zone_recovers_failure_signal_from_truncated_tail():
+    """活跃区保头剪尾，尾部的失败摘要必须被补回来。
+
+    没有这层补偿会出现一个反直觉的现象：同一条失败输出沉进压缩区反而看得到
+    原因（压缩区提取 signal），留在活跃区反而看不到。
+    """
+    item = _long_tool_round(
+        [
+            "FAILED tests/test_x.py::test_y - AssertionError",
+            "=== 1 failed, 199 passed ===",
+        ]
+    )
+    rendered = render_tool_round_compressed_history([item], budget=100000).rendered
+
+    assert "[truncated-signal]" in rendered
+    # 取尾部最后一条错误行：summary 比单条 FAILED 信息量更高。
+    assert "1 failed, 199 passed" in rendered
+
+
+def test_active_zone_signal_is_omitted_when_nothing_was_dropped():
+    short = {
+        "role": "tool",
+        "name": "read_file",
+        "args": {"path": "a.py"},
+        "content": "line1\nline2",
+    }
+    rendered = render_tool_round_compressed_history([short], budget=100000).rendered
+    assert "[truncated-signal]" not in rendered
+
+
+def test_active_zone_signal_is_omitted_when_dropped_tail_is_clean():
+    """截断了，但尾部没有任何错误迹象——不该凭空补一行占预算。"""
+    item = {
+        "role": "tool",
+        "name": "read_file",
+        "args": {"path": "b.py"},
+        "content": "x" * (ACTIVE_LINE_LIMIT * 3),
+    }
+    rendered = render_tool_round_compressed_history([item], budget=100000).rendered
+    assert "[truncated-signal]" not in rendered
+
+
+def test_active_zone_signal_is_not_duplicated_when_already_visible():
+    """信号只在被丢弃的那段里找，头部已经可见的不重复补。"""
+    head_error = "\n".join(["exit_code: 1", "Traceback (most recent call last):", "x" * (ACTIVE_LINE_LIMIT * 2)])
+    item = {"role": "tool", "name": "run_shell", "args": {"command": "x"}, "content": head_error}
+    rendered = render_tool_round_compressed_history([item], budget=100000).rendered
+    assert "[truncated-signal]" not in rendered
+
+
+def test_history_renders_exactly_two_zones():
+    """只有 compressed 与 active 两个区——上游那套 frozen 不落在 transcript 内部。"""
+    history = [
+        {"role": "tool", "name": "read_file", "args": {"path": f"f{index}.py"}, "content": "body"}
+        for index in range(6)
+    ]
+    rendered = render_tool_round_compressed_history(history, budget=100000).rendered
+
+    assert "Compressed older tool rounds:" in rendered
+    assert "Active recent context:" in rendered
+    assert "frozen" not in rendered.lower()

@@ -19,7 +19,11 @@ def test_memory_promotion_experiment_identifies_save_group_as_best(tmp_path):
     assert save["rejected_count"] == 60
     assert save["pending_count"] == 30
     assert save["evidence_coverage"] == 1.0
-    assert save["promotion_precision_proxy"] == 1.0
+    # proxy 现在衡量的是“存进去的条目里，有多少条的长期性有客观依据”。
+    # 90 条里 60 条的 stable 来自配置文件或用户陈述；剩下 30 条依赖事实是靠
+    # 一次 pytest 成功推出来的，本来就不该算客观长期依据——所以它不等于 1，
+    # 这正是把恒真项从分数里去掉之后该有的样子。
+    assert round(save["promotion_precision_proxy"], 3) == 0.667
     assert save["rejected_sensitive_candidate_count"] == 30
     assert save["duplicate_candidate_suppression_count"] == 0
     assert save["conflict_detection_count"] == 30

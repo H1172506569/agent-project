@@ -24,7 +24,15 @@ from .context_compression import (
 from .context_manager import ContextManager
 from .coverage_manifest import build_coverage_manifest
 from .event_log import event_log_metrics, project_history, project_trace
-from .memory_promotion import MemoryPromotionPolicy, generate_memory_candidates, memory_promotion_metrics
+from .memory_promotion import (
+    KIND_TO_TOPIC,
+    ExistingMemoryTexts,
+    MemoryPromotionPolicy,
+    generate_memory_candidates,
+    memory_promotion_metrics,
+    merge_memory_candidates,
+    model_memory_candidates,
+)
 from .checkpoint import CHECKPOINT_NONE_STATUS
 from .prompt_prefix import build_prompt_prefix, tool_signature
 from .providers.clients import AnthropicCompatibleModelClient
@@ -64,6 +72,11 @@ DEFAULT_FEATURE_FLAGS = {
     "adaptive_context_compression": False,
     "llm_context_compression": True,
     "memory_candidate_promotion": True,
+    # 默认开：硬编码 extractor 只认那几种路径模式，recall 是这条链路的真瓶颈，
+    # 而模型提出的候选走的是完全相同的硬门与双阈值，安全性不因此放宽。
+    # 关掉它的唯一理由是需要逐次可复现的测量——benchmark 里显式置 False 即可，
+    # 不该让产品默认行为迁就实验。
+    "llm_memory_candidates": True,
 }
 __all__ = ["RepoPilot", "SessionStore"]
 
@@ -135,6 +148,7 @@ class RepoPilot:
         self.last_prompt_metadata = {}
         self.last_completion_metadata = {}
         self.last_memory_candidates = []
+        self.last_model_memory_candidate_count = 0
         self.last_memory_promotion_decisions = []
         self.last_memory_promotion_metrics = memory_promotion_metrics([], [])
         self._last_tool_result_metadata = {}
@@ -233,7 +247,11 @@ class RepoPilot:
         return tool_signature(self.tools)
 
     def build_prefix(self):
-        return build_prompt_prefix(workspace=self.workspace, tools=self.tools)
+        return build_prompt_prefix(
+            workspace=self.workspace,
+            tools=self.tools,
+            memory_candidates_enabled=self.feature_enabled("llm_memory_candidates"),
+        )
 
     def _apply_prefix_state(self, prefix_state):
         self.prefix_state = prefix_state
@@ -264,6 +282,9 @@ class RepoPilot:
 
     def memory_text(self):
         return self.memory.render_memory_text()
+
+    def resident_memory_text(self):
+        return self.memory.render_resident_memory_text()
 
     def projected_history(self):
         """Return the canonical history projection for prompt-time reads.
@@ -300,13 +321,15 @@ class RepoPilot:
                     continue
                 seen_reads.add(path)
 
+            seq = item.get("event_seq")
+            tag = "" if seq is None else f"[e{int(seq)}] "
             if item["role"] == "tool":
                 limit = 900 if recent else 180
-                lines.append(f"[tool:{item['name']}] {json.dumps(item['args'], sort_keys=True)}")
+                lines.append(f"{tag}[tool:{item['name']}] {json.dumps(item['args'], sort_keys=True)}")
                 lines.append(clip(item["content"], limit))
             else:
                 limit = 900 if recent else 220
-                lines.append(f"[{item['role']}] {clip(item['content'], limit)}")
+                lines.append(f"{tag}[{item['role']}] {clip(item['content'], limit)}")
 
         return clip("\n".join(lines), MAX_HISTORY)
 
@@ -379,6 +402,7 @@ class RepoPilot:
                 "prefix_chars": len(self.prefix),
                 "workspace_chars": len(self.workspace.text()),
                 "memory_chars": len(self.memory_text()),
+                "resident_memory_chars": len(self.resident_memory_text()),
                 "history_chars": len(self.history_text()),
                 "request_chars": len(user_message),
                 "tool_count": len(self.tools),
@@ -814,9 +838,11 @@ class RepoPilot:
             self.memory.remember_file(canonical_path)
             changed = True
         if name == "read_file":
+            # 摘要只存进 file_summaries：那里带 freshness，文件被改写后会失效。
+            # 以前还会再追加一条同文本的 episodic 笔记，那份副本没有 freshness，
+            # 会在文件改写后继续把过期摘要召回给模型。
             summary = memorylib.summarize_read_result(result)
             self.memory.set_file_summary(canonical_path, summary)
-            self.memory.append_note(summary, tags=(canonical_path,), source=canonical_path)
             changed = True
         elif name in {"write_file", "patch_file"}:
             self.memory.invalidate_file_summary(canonical_path)
@@ -836,25 +862,10 @@ class RepoPilot:
     def note_tool(self, name, args, result):
         self.update_memory_after_tool(name, args, result)
 
-    def record_process_note_for_tool(self, name, metadata):
-        status = str(metadata.get("tool_status", "")).strip()
-        if status not in {"partial_success", "error", "rejected"}:
-            return
-        affected_paths = [str(path).strip() for path in metadata.get("affected_paths", []) if str(path).strip()]
-        path_text = ", ".join(affected_paths) or "workspace"
-        if status == "partial_success":
-            text = f"{name} partial_success on {path_text}; inspect diff before retry"
-        elif status == "error":
-            text = f"{name} error on {path_text}; check the failure before retry"
-        else:
-            text = f"{name} rejected; choose a different action before retry"
-        tags = ["process", status, *affected_paths]
-        self.memory.append_note(text, tags=tuple(tags), source=name, kind="process")
-        self.session["memory"] = self.memory.to_dict()
-
-    def promote_memory_candidates(self, task_state=None):
+    def promote_memory_candidates(self, task_state=None, model_response=""):
         if not self.feature_enabled("memory") or not self.feature_enabled("memory_candidate_promotion"):
             self.last_memory_candidates = []
+            self.last_model_memory_candidate_count = 0
             self.last_memory_promotion_decisions = []
             self.last_memory_promotion_metrics = memory_promotion_metrics([], [])
             return dict(self.last_memory_promotion_metrics)
@@ -863,8 +874,19 @@ class RepoPilot:
             return dict(self.last_memory_promotion_metrics)
 
         events = self.run_events(state.run_id)
-        candidates = generate_memory_candidates(events)
+        # 两路候选：确定性 extractor 负责“一定抓得到”的模式，模型提议负责 recall。
+        # 合并后走同一套 SAVE 硬门和双阈值——模型提的不因为是模型提的而放宽。
+        extracted = generate_memory_candidates(events)
+        proposed = []
+        self.last_model_memory_candidate_count = 0
+        if self.feature_enabled("llm_memory_candidates"):
+            proposed = model_memory_candidates(self.parse_memory_candidates(model_response), events)
+            self.last_model_memory_candidate_count = len(proposed)
+        candidates = merge_memory_candidates(extracted, proposed)
         policy = MemoryPromotionPolicy()
+        # 现有长期记忆只读一次，之后按晋升结果增量同步；
+        # 否则每个 candidate 都会把 durable topic 的 markdown 重新读一遍磁盘。
+        existing_texts = ExistingMemoryTexts(self.memory)
         decisions = []
         for candidate in candidates:
             self.record_event(
@@ -872,21 +894,34 @@ class RepoPilot:
                 {"source": "memory", "candidate": candidate.to_dict()},
                 task_state=state,
             )
-            decision = policy.evaluate(candidate, self.memory, events=events)
+            decision = policy.evaluate(
+                candidate, self.memory, events=events, existing_texts=existing_texts.texts()
+            )
             decisions.append(decision)
             payload = {
                 "source": "memory",
                 "decision": decision.to_dict(),
                 "durable_topic": candidate.durable_topic,
+                "durable_tier": decision.tier,
             }
             if decision.promote:
-                promoted, superseded = self.memory.promote_durable([(candidate.durable_topic, candidate.text)])
+                # 带上候选自己的主语：模型显式给的比从句子里猜的可靠，
+                # 猜不出可靠主语时写入端会退化成追加，而不是覆盖。
+                promoted, superseded, evicted = self.memory.promote_durable(
+                    [(candidate.durable_topic, candidate.text, candidate.subject)]
+                )
+                existing_texts.record_promotion(candidate.text)
                 self.session["memory"] = self.memory.to_dict()
                 payload["promoted"] = promoted
                 payload["superseded"] = superseded
+                # 常驻层有上限，被 cap 挤掉的笔记要留痕，不能静默消失。
+                payload["evicted"] = evicted
                 self.record_event("memory_promoted", payload, task_state=state)
             elif decision.reject:
                 self.record_event("memory_rejected", payload, task_state=state)
+            elif decision.requires_confirmation:
+                # 常驻记忆每轮都在生效，撤销它必须由用户显式拍板。
+                self.record_event("memory_confirmation_required", payload, task_state=state)
             else:
                 self.record_event("memory_pending_confirmation", payload, task_state=state)
 
@@ -895,6 +930,63 @@ class RepoPilot:
         self.last_memory_promotion_metrics = memory_promotion_metrics(candidates, decisions)
         self.session_path = self.session_store.save(self.session)
         return dict(self.last_memory_promotion_metrics)
+
+    def pending_memory_confirmations(self):
+        """列出所有待解决的长期记忆冲突，两层都算。
+
+        撤销能力本身是不分层的——`confirm_memory_conflict()` 和底层的
+        `revoke()` 对任何 topic 都有效。分层的只是**紧迫度**：常驻记忆每轮都在
+        生效，冲突必须由人拍板（`blocking=True`）；检索层的旧笔记只在被召回时
+        有害，可以等。
+
+        以前这里只列 `requires_confirmation` 的项，等于把检索层的冲突挡在了
+        解决接口之外：新事实被判 pending 就地丢弃，过期的旧笔记却永远留着，
+        而且会一直挡住自己的替代者。
+        """
+        pending = []
+        for decision in self.last_memory_promotion_decisions:
+            if decision.get("reason") not in {"conflict", "resident_conflict"}:
+                continue
+            candidate = decision.get("candidate", {})
+            pending.append(
+                {
+                    "topic": KIND_TO_TOPIC.get(candidate.get("kind", ""), "project-conventions"),
+                    "tier": decision.get("tier", ""),
+                    "blocking": bool(decision.get("requires_confirmation")),
+                    "existing_text": decision.get("conflict_with", ""),
+                    "candidate_text": candidate.get("text", ""),
+                }
+            )
+        return pending
+
+    def confirm_memory_conflict(self, topic, existing_text, candidate_text, accept):
+        """对一条常驻记忆冲突拍板。
+
+        `accept=True` 表示新事实取代旧约定：撤销旧笔记再写入新笔记。
+        `accept=False` 表示保留现状，只把这次拒绝记进 event log，
+        免得同一条候选下次又来问一遍时看不到上下文。
+        """
+        if not self.feature_enabled("memory"):
+            return {"applied": False, "reason": "memory_disabled"}
+        payload = {
+            "source": "memory",
+            "topic": topic,
+            "existing_text": existing_text,
+            "candidate_text": candidate_text,
+            "accepted": bool(accept),
+        }
+        if not accept:
+            self.record_event("memory_conflict_rejected", payload)
+            self.session_path = self.session_store.save(self.session)
+            return {"applied": False, "reason": "declined"}
+
+        revoked = self.memory.revoke_durable(topic, existing_text)
+        promoted, superseded, evicted = self.memory.promote_durable([(topic, candidate_text)])
+        self.session["memory"] = self.memory.to_dict()
+        payload.update({"revoked": revoked, "promoted": promoted, "superseded": superseded, "evicted": evicted})
+        self.record_event("memory_conflict_resolved", payload)
+        self.session_path = self.session_store.save(self.session)
+        return {"applied": True, "revoked": revoked, "promoted": promoted, "evicted": evicted}
 
     def ask(self, user_message):
         from .agent_loop import AgentLoop
@@ -1217,6 +1309,31 @@ class RepoPilot:
         for match in re.finditer(r"""([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:"([^"]*)"|'([^']*)')""", text):
             attrs[match.group(1)] = match.group(2) if match.group(2) is not None else match.group(3)
         return attrs
+
+    @staticmethod
+    def parse_memory_candidates(raw):
+        """从模型响应里解析可选的 <memory_candidates> 块。
+
+        刻意只在收尾解析一次，不做成每轮的协议：`parse()` 是 <tool>/<final>
+        先到先得，多加一种标签会制造新的 retry 来源（模型先吐记忆块、忘了发
+        tool）；而且一次任务里真正稳定的事实就那么几条，每轮多输出几百 token
+        是纯浪费。解析失败一律当空——记忆是锦上添花，不该让它拖垮一次成功的运行。
+        """
+        raw = str(raw)
+        if "<memory_candidates>" not in raw:
+            return []
+        body = RepoPilot.extract(raw, "memory_candidates").strip()
+        if not body:
+            return []
+        try:
+            payload = json.loads(body)
+        except Exception:
+            return []
+        if isinstance(payload, dict):
+            payload = [payload]
+        if not isinstance(payload, list):
+            return []
+        return [item for item in payload if isinstance(item, dict)]
 
     @staticmethod
     def extract(text, tag):

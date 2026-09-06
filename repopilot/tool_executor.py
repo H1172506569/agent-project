@@ -153,7 +153,6 @@ class ToolExecutor:
                 metadata["exit_code"] = data.get("exit_code", 0)
             if data:
                 metadata["structured_data_keys"] = sorted(data)
-            agent.record_process_note_for_tool(name, metadata)
             return ToolExecutionResult(content=content, metadata=metadata, data=data)
         except Exception as exc:
             after_snapshot = agent.capture_workspace_snapshot() if tool["risky"] else before_snapshot
@@ -171,5 +170,4 @@ class ToolExecutor:
                 workspace_fingerprint=agent.workspace.fingerprint(),
                 diff_summary=diff_summary,
             )
-            agent.record_process_note_for_tool(name, metadata)
             return ToolExecutionResult(content=f"error: tool {name} failed: {exc}", metadata=metadata, data={})

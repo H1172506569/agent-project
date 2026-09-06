@@ -59,6 +59,17 @@ def _event_for_candidate(category, index, text):
             "exit_code": 0,
             "result": "passed",
         }
+    if category == "stable_convention":
+        # 证据必须是仓库里的配置，不能是 assistant 自己说过的话——
+        # 助手的一句陈述不构成“这是项目长期约定”的依据。原先这一类走的是
+        # 默认分支（assistant 消息），在证据来源判定 stable 之后就是自证。
+        return {
+            "source": "trace",
+            "event": "tool_executed",
+            "name": "read_file",
+            "args": {"path": "pyproject.toml"},
+            "result": f"[tool.repopilot] convention_{index} = true",
+        }
     if category == "sensitive_secret":
         return {
             "source": "trace",
@@ -72,7 +83,7 @@ def _event_for_candidate(category, index, text):
 
 def _candidate_for(category, index, event_index):
     if category == "stable_convention":
-        text = f"Project convention memory-benchmark-{index:02d} uses structured tool results."
+        text = f"Project convention memory-benchmark-{index:02d} must use structured tool results."
         kind = "project_convention"
         scope = "project"
     elif category == "dependency_fact":
