@@ -94,11 +94,12 @@ class AgentLoop:
         )
         return raw, kind, payload
 
-    def _finish_success(self, task_state, user_message, final, run_started_at):
+    def _finish_success(self, task_state, user_message, final, run_started_at, raw=""):
         agent = self.agent
         agent.record({"role": "assistant", "content": final, "created_at": now()})
         task_state.finish_success(final)
-        agent.promote_memory_candidates(task_state)
+        # 原始响应传下去：可选的 <memory_candidates> 块只在收尾解析这一次。
+        agent.promote_memory_candidates(task_state, model_response=raw)
         checkpoint = agent.create_checkpoint(task_state, user_message, trigger="run_finished")
         agent.run_store.write_task_state(task_state)
         agent.emit_trace(
@@ -260,7 +261,7 @@ class AgentLoop:
                 continue
 
             final = (payload or raw).strip()
-            return self._finish_success(task_state, user_message, final, run_started_at)
+            return self._finish_success(task_state, user_message, final, run_started_at, raw=raw)
 
         if tool_steps >= agent.max_steps:
             task_state.record_attempt()
@@ -292,7 +293,7 @@ class AgentLoop:
             )
             if kind == "final":
                 final = (payload or raw).strip()
-                return self._finish_success(task_state, user_message, final, run_started_at)
+                return self._finish_success(task_state, user_message, final, run_started_at, raw=raw)
 
         if attempts >= max_attempts and tool_steps < agent.max_steps:
             final = "Stopped after too many malformed model responses without a valid tool call or final answer."

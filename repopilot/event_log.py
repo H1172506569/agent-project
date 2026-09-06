@@ -25,13 +25,23 @@ def project_trace(events):
 
 
 def project_history(events):
+    """投影出模型看到的对话历史。
+
+    这里把事件的 `seq` 一并带上（`event_seq`）：模型引用证据时报的就是这个编号，
+    而它必须是**写入时固定在事件上的稳定 id**，不能是列表位置——位置会随过滤条件
+    和新增事件类型整体错位。
+    """
     history = []
     for event in events:
         if event.get("source") != "history":
             continue
         item = event.get("history")
         if isinstance(item, dict):
-            history.append(dict(item))
+            item = dict(item)
+            seq = event.get("seq")
+            if seq is not None:
+                item["event_seq"] = int(seq)
+            history.append(item)
     return history
 
 

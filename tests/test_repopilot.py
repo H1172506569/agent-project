@@ -71,7 +71,7 @@ def test_agent_updates_task_summary_on_each_request(tmp_path):
     assert agent.session["memory"]["working"]["task_summary"] == "Second request"
 
 
-def test_agent_only_stores_reusable_epistemic_notes(tmp_path):
+def test_agent_only_stores_reusable_file_summaries(tmp_path):
     (tmp_path / "facts.txt").write_text("deploy key is red\n", encoding="utf-8")
     agent = build_agent(
         tmp_path,
@@ -83,10 +83,11 @@ def test_agent_only_stores_reusable_epistemic_notes(tmp_path):
     )
 
     assert agent.ask("Read the file and remember the fact") == "Done."
-    notes = agent.session["memory"]["episodic_notes"]
-    assert any("deploy key is red" in note["text"] for note in notes)
-    assert not any(note["text"] == "Done." for note in notes)
-    assert not any(note["text"] == "Done." for note in notes)
+    # 读文件的摘要只存进 file_summaries：那里带 freshness，文件改写后会失效。
+    summaries = agent.session["memory"]["file_summaries"]
+    assert any("deploy key is red" in item["summary"] for item in summaries.values())
+    assert not any(item["summary"] == "Done." for item in summaries.values())
+    assert "episodic_notes" not in agent.session["memory"]
 
     resumed = RepoPilot.from_session(
         model_client=FakeModelClient(["<final>It is red.</final>"]),
@@ -98,8 +99,9 @@ def test_agent_only_stores_reusable_epistemic_notes(tmp_path):
 
     assert resumed.ask("What color is the deploy key?") == "It is red."
     prompt = resumed.model_client.prompts[-1]
-    assert "Relevant memory" in prompt
-    assert "deploy key is red" in prompt
+    # 摘要经由 Memory 段的 file_summaries 回到 prompt，而不是 Relevant memory。
+    memory_section = prompt.split("Memory:\n", 1)[1].split("\n\nRelevant memory:", 1)[0]
+    assert "deploy key is red" in memory_section
 
 
 def test_file_summary_cache_is_invalidated_on_out_of_band_edit_and_path_spelling(tmp_path):
@@ -251,7 +253,7 @@ def test_invalid_risky_tool_does_not_prompt_for_approval(tmp_path):
     with patch("builtins.input") as mock_input:
         result = agent.run_tool("write_file", {})
 
-    assert result.startswith("error: invalid arguments for write_file: 'path'")
+    assert result.startswith("error: invalid arguments for write_file: missing required argument: path")
     assert 'example: <tool name="write_file"' in result
     mock_input.assert_not_called()
 
@@ -1106,9 +1108,11 @@ def test_trace_and_report_redact_secret_env_values(tmp_path):
 
 def test_prompt_budget_metadata_records_budget_decisions(tmp_path):
     agent = build_agent(tmp_path, ["<final>Done.</final>"])
-    agent.memory.append_note("alpha episodic note " + ("A" * 120), tags=("recall",), created_at="2026-04-07T10:00:00+00:00")
-    agent.memory.append_note("beta episodic recall note " + ("B" * 120), created_at="2026-04-07T10:01:00+00:00")
-    agent.memory.append_note("gamma episodic note " + ("C" * 120), tags=("recall",), created_at="2026-04-07T10:02:00+00:00")
+    agent.memory.promote_durable([
+        ("dependency-facts", "alpha recall note " + ("A" * 120)),
+        ("dependency-facts", "beta recall note " + ("B" * 120)),
+        ("dependency-facts", "gamma recall note " + ("C" * 120)),
+    ])
 
     for index in range(4):
         agent.record(
@@ -1141,9 +1145,9 @@ def test_prompt_budget_metadata_records_budget_decisions(tmp_path):
     assert metadata["relevant_memory"]["selected_count"] == 3
     assert len(metadata["relevant_memory"]["rendered_notes"]) == 3
     assert len([line for line in relevant_section.splitlines() if line.startswith("- ")]) == 3
-    assert "alpha episodic" in relevant_section
-    assert "beta episodic" in relevant_section
-    assert "gamma episodic" in relevant_section
+    assert "alpha recall" in relevant_section
+    assert "beta recall" in relevant_section
+    assert "gamma recall" in relevant_section
     assert metadata["current_request"]["text"] == "recall"
     assert metadata["current_request"]["rendered_chars"] == len("recall")
 
@@ -1178,7 +1182,7 @@ def test_agent_creates_checkpoint_when_context_reduction_happens_and_artifacts_o
                 "created_at": f"2026-04-07T10:{index:02d}:00+00:00",
             }
         )
-    agent.memory.append_note("checkpoint note " + ("B" * 220), tags=("checkpoint",), created_at="2026-04-07T11:00:00+00:00")
+    agent.memory.promote_durable([("dependency-facts", "checkpoint note " + ("B" * 220))])
     agent.context_manager.total_budget = 900
     agent.context_manager.section_budgets = {
         "prefix": 120,
@@ -1579,7 +1583,7 @@ def test_resume_records_runtime_identity_mismatch_fields_in_metadata_and_trace(t
     ]
 
 
-def test_partial_success_creates_process_note_for_exploration_history(tmp_path):
+def test_partial_success_is_reported_in_tool_metadata(tmp_path):
     agent = build_agent(tmp_path, [])
     command = subprocess.list2cmdline(
         [sys.executable, "-c", "from pathlib import Path; Path('README.md').write_text('changed\\n', encoding='utf-8'); raise SystemExit(1)"]
@@ -1593,16 +1597,14 @@ def test_partial_success_creates_process_note_for_exploration_history(tmp_path):
         },
     )
 
-    process_notes = [
-        note
-        for note in agent.memory.to_dict()["episodic_notes"]
-        if note.get("kind") == "process"
-    ]
+    # partial_success 以前还会另存一条 process 笔记进记忆层，那份副本和
+    # history 压缩保留的失败工具轮重复。现在只留工具元数据这一份，
+    # 它会随 tool_executed 事件进 trace。
+    metadata = agent._last_tool_result_metadata
 
-    assert process_notes
-    assert process_notes[-1]["text"] == "run_shell partial_success on README.md; inspect diff before retry"
-    assert "partial_success" in process_notes[-1]["tags"]
-    assert "README.md" in process_notes[-1]["tags"]
+    assert metadata["tool_status"] == "partial_success"
+    assert "README.md" in metadata["affected_paths"]
+    assert metadata["workspace_changed"] is True
 
 
 def test_final_answer_memory_labels_do_not_directly_promote_durable_memory(tmp_path):

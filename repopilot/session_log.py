@@ -16,6 +16,10 @@ class SessionLogStore:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        # seq 只是“这个 session 里第几条事件”，重算它不需要把整个日志读回来。
+        # 这里按 session_id 缓存 (下一个 seq, 我们写完后的文件大小)，
+        # 让 append 变成 O(1)；文件大小对不上时说明有别的写入者，再回退重建。
+        self._seq_cache = {}
 
     def session_dir(self, session_id):
         return self.root / str(session_id)
@@ -69,21 +73,33 @@ class SessionLogStore:
             if str(event.get("run_id", "")) == run_id
         ]
 
+    def _file_size(self, path):
+        try:
+            return path.stat().st_size
+        except OSError:
+            return -1
+
+    def _next_seq(self, session_id, path):
+        cached = self._seq_cache.get(str(session_id))
+        if cached is not None and cached[1] == self._file_size(path):
+            return cached[0]
+        return len(self.load_events(session_id))
+
     def append_event(self, session, event, task_state=None):
         with self._lock:
             self.ensure_header(session)
-            events = self.load_events(session["id"])
+            path = self.path(session["id"])
             payload = dict(event)
             payload.setdefault("type", "event")
             payload.setdefault("version", 1)
-            payload["seq"] = len(events)
+            payload["seq"] = self._next_seq(session["id"], path)
             payload["session_id"] = session["id"]
             if task_state is not None:
                 payload.setdefault("run_id", str(getattr(task_state, "run_id", "")))
             else:
                 payload.setdefault("run_id", "")
-            path = self.path(session["id"])
             with path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(payload, sort_keys=True, ensure_ascii=True))
                 handle.write("\n")
+            self._seq_cache[str(session["id"])] = (payload["seq"] + 1, self._file_size(path))
             return path

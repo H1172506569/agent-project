@@ -243,7 +243,9 @@ def _build_agent(root, group):
     )
     agent.prefix = "You are repopilot."
     if group["memory"]:
-        agent.memory.append_note("MEMORY_TARGET_FACT: legacy config requires strict pytest mode", tags=("legacy",))
+        agent.memory.promote_durable(
+            [("dependency-facts", "MEMORY_TARGET_FACT: legacy config requires strict pytest mode")]
+        )
         agent.memory.set_file_summary("src/legacy_config.py", "MEMORY_TARGET_FACT: strict pytest mode")
     _seed_history(agent)
     return agent

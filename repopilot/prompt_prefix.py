@@ -35,7 +35,20 @@ def tool_signature(tools):
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
 
-def build_prompt_prefix(workspace, tools, built_at=None):
+MEMORY_CANDIDATE_PROTOCOL = """
+Optional memory proposal:
+- After <final>, you may add one <memory_candidates>...</memory_candidates> block.
+- It holds a JSON array (max 8) of durable facts worth remembering across sessions.
+- Each item: {"text": one sentence, "kind": one of project_convention|decision|dependency_fact|user_preference, "subject": what the fact is about, "evidence": the [eN] number of the transcript entry that supports it, "actionable": true if it changes what a future run should do}.
+- "evidence" must be a number you can see in the transcript, e.g. 6 for the entry shown as [e6]. An item whose evidence does not resolve is not stored.
+- Whether a fact is durable is decided by the runtime from where its evidence came, not by you. Facts read from dependency, build, or CI config files and preferences stated by the user count as durable; a single command's output does not.
+- Propose only stable, reusable facts. Never propose current goals, next steps, this turn's failures, or any secret.
+- The runtime verifies every "evidence" against the real session log; an unverifiable item is not stored.
+- Omit the block entirely when nothing qualifies.
+""".strip()
+
+
+def build_prompt_prefix(workspace, tools, built_at=None, memory_candidates_enabled=False):
     tool_lines = []
     for name, tool in tools.items():
         fields = ", ".join(f"{key}: {value}" for key, value in tool["schema"].items())
@@ -85,6 +98,8 @@ def build_prompt_prefix(workspace, tools, built_at=None):
         {workspace.text()}
         """
     ).strip()
+    if memory_candidates_enabled:
+        text = text + "\n\n" + MEMORY_CANDIDATE_PROTOCOL
     signature = tool_signature(tools)
     return PromptPrefix(
         text=text,

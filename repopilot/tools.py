@@ -185,10 +185,96 @@ def tool_example(name):
     return TOOL_EXAMPLES.get(name, "")
 
 
+# ---------------------------------------------------------------------------
+# 结构性校验:由 TOOL_PARAMETER_SCHEMAS 驱动
+#
+# 这一段刻意只实现 JSON Schema 的一个子集,而不是引入 jsonschema 依赖。
+# 覆盖的关键字就是 TOOL_PARAMETER_SCHEMAS 里实际用到的那些,
+# 语义与标准 JSON Schema 一致,所以将来把同一份 schema 直接发给
+# provider 做 native tool calling 时,校验口径不会漂移。
+# ---------------------------------------------------------------------------
+
+_JSON_TYPE_PREDICATES = {
+    "object": lambda value: isinstance(value, dict),
+    "array": lambda value: isinstance(value, list),
+    "string": lambda value: isinstance(value, str),
+    "boolean": lambda value: isinstance(value, bool),
+    # bool 是 int 的子类,必须显式排除,否则 True 会被当成合法整数。
+    "integer": lambda value: isinstance(value, int) and not isinstance(value, bool),
+    "number": lambda value: isinstance(value, (int, float)) and not isinstance(value, bool),
+}
+
+
+def _check_json_type(field_name, value, expected):
+    predicate = _JSON_TYPE_PREDICATES.get(expected)
+    if predicate is None or predicate(value):
+        return
+    raise ValueError(f"{field_name} must be of type {expected}, got {type(value).__name__}")
+
+
+def validate_against_schema(schema, args):
+    """按 JSON Schema 子集做结构性校验。
+
+    为什么存在:
+    参数的类型、必填、取值范围这些约束本来就已经在 TOOL_PARAMETER_SCHEMAS 里
+    声明过一遍。以前它只被 tool_signature() 拿去算缓存指纹,真正拦住非法参数的
+    是另一份手写 if,同一个事实被写了两遍,会各自漂移。这个函数让 schema 成为
+    结构性约束的唯一来源。
+
+    输入 / 输出:
+    - 输入:一个 JSON Schema 对象,以及模型给出的 args
+    - 输出:无返回值;不满足约束时抛 ValueError,消息面向模型,说明哪里错了
+
+    在 agent 链路里的位置:
+    它在 validate_tool() 的第一步被调用,即工具执行之前、审批之前。
+    """
+    _check_json_type("args", args, schema.get("type", "object"))
+
+    properties = schema.get("properties", {})
+    for field_name in schema.get("required", []):
+        if field_name not in args:
+            raise ValueError(f"missing required argument: {field_name}")
+
+    if schema.get("additionalProperties") is False:
+        unexpected = sorted(set(args) - set(properties))
+        if unexpected:
+            raise ValueError(f"unexpected argument(s): {', '.join(unexpected)}")
+
+    for field_name, rule in properties.items():
+        if field_name not in args:
+            # 缺省值由 schema 声明、由工具实现读取,不在这里回填,
+            # 保持校验是纯检查、不改写 args。
+            continue
+        value = args[field_name]
+        if "type" in rule:
+            _check_json_type(field_name, value, rule["type"])
+        if "minimum" in rule and value < rule["minimum"]:
+            raise ValueError(f"{field_name} must be >= {rule['minimum']}, got {value}")
+        if "maximum" in rule and value > rule["maximum"]:
+            raise ValueError(f"{field_name} must be <= {rule['maximum']}, got {value}")
+        if "minLength" in rule and len(value) < rule["minLength"]:
+            raise ValueError(f"{field_name} must be at least {rule['minLength']} character(s) long")
+
+
 def validate_tool(context, name, args):
+    """工具参数校验入口:结构由 schema 判定,语义由下面的手写规则判定。
+
+    为什么分成两段:
+    schema 只能看见 args 本身,判断的是“这组参数长得对不对”。而 agent 的很多
+    约束依赖 args 之外的状态——工作区里这个路径存不存在、文件内容命中几次、
+    当前 delegate 深度是多少。这类规则不是 schema 写得不够细,而是它按定义
+    就判定不了,所以留在这里手写。
+    """
     args = args or {}
 
+    schema = TOOL_PARAMETER_SCHEMAS.get(name)
+    if schema is not None:
+        validate_against_schema(schema, args)
+
+    # --- 以下都是 schema 判定不了的语义约束 ---
+
     if name == "list_files":
+        # 依赖工作区状态:路径要真实存在且是目录。
         path = context.path(args.get("path", "."))
         if not path.is_dir():
             raise ValueError("path is not a directory")
@@ -198,47 +284,39 @@ def validate_tool(context, name, args):
         path = context.path(args["path"])
         if not path.is_file():
             raise ValueError("path is not a file")
+        # 跨字段约束:JSON Schema 无法表达“end 必须不小于 start”。
         start = int(args.get("start", 1))
         end = int(args.get("end", 400))
-        if start < 1 or end < start:
+        if end < start:
             raise ValueError("invalid line range")
         return
 
     if name == "search":
-        pattern = str(args.get("pattern", "")).strip()
-        if not pattern:
+        # 比 minLength=1 更严:全是空白的 pattern 也要拒绝。
+        if not str(args.get("pattern", "")).strip():
             raise ValueError("pattern must not be empty")
         context.path(args.get("path", "."))
         return
 
     if name == "run_shell":
-        command = str(args.get("command", "")).strip()
-        if not command:
+        if not str(args.get("command", "")).strip():
             raise ValueError("command must not be empty")
-        timeout = int(args.get("timeout", 20))
-        if timeout < 1 or timeout > 120:
-            raise ValueError("timeout must be in [1, 120]")
         return
 
     if name == "write_file":
         path = context.path(args["path"])
         if path.exists() and path.is_dir():
             raise ValueError("path is a directory")
-        if "content" not in args:
-            raise ValueError("missing content")
         return
 
     if name == "patch_file":
-        # patch_file 故意做得很严格：old_text 必须精确命中且只能出现一次，
-        # 这样修改行为才是确定的，失败原因也更容易解释。
+        # patch_file 故意做得很严格:old_text 必须精确命中且只能出现一次,
+        # 这样修改行为才是确定的,失败原因也更容易解释。
+        # 这条要读文件内容才能判定,任何 schema 都表达不了。
         path = context.path(args["path"])
         if not path.is_file():
             raise ValueError("path is not a file")
-        old_text = str(args.get("old_text", ""))
-        if not old_text:
-            raise ValueError("old_text must not be empty")
-        if "new_text" not in args:
-            raise ValueError("missing new_text")
+        old_text = str(args["old_text"])
         text = path.read_text(encoding="utf-8")
         count = text.count(old_text)
         if count != 1:
@@ -246,9 +324,9 @@ def validate_tool(context, name, args):
         return
 
     if name == "delegate":
-        task = str(args.get("task", "")).strip()
-        if not task:
+        if not str(args.get("task", "")).strip():
             raise ValueError("task must not be empty")
+        # 依赖 runtime 状态,不是参数本身的问题。
         if context.depth >= context.max_depth:
             raise ValueError("delegate depth exceeded")
         return

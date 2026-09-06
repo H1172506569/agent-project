@@ -12,6 +12,10 @@ EXIT_CODE_PATTERN = re.compile(r"(?im)^\s*exit_code:\s*(-?\d+)\s*$")
 ERROR_HINT_PATTERN = re.compile(r"(?i)\b(error|failed|fail|traceback|permission denied|exception)\b")
 PATHISH_PATTERN = re.compile(r"(?<![\w.-])(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+(?:\.[A-Za-z0-9_.-]+)?")
 
+# 活跃区单条正文的长度上限。补偿逻辑（`_active_signal_lines`）必须用同一个值
+# 判断「有没有被截断」，所以它是常量而不是散在调用处的字面量。
+ACTIVE_LINE_LIMIT = 900
+
 
 def _tail_clip(text, limit):
     text = str(text)
@@ -32,12 +36,20 @@ class CompressedHistory:
 
 
 def render_tool_round_compressed_history(history, budget, active_tool_rounds=3):
-    """Render history with frozen/compressed/active transcript zones.
+    """Render history as two transcript zones: compressed and active.
 
     RepoPilot stores tool results directly in history. A "tool round" is therefore
     represented by each tool-result item, with nearby recent messages kept in the
     active suffix. Older tool rounds become deterministic structured breadcrumbs
     that retain tool name, file path/command, and failure status.
+
+    只有两个区。上游那套 frozen/compressed/active 里的 frozen 在 RepoPilot 里
+    不落在 transcript 内部——不可牺牲的内容被上提到了 prompt 的段落层：
+    `current_request` 完全豁免削减，`prefix` 排在牺牲顺序的最末位。
+    所以这里只负责 compressed 与 active 的切分。
+
+    活跃区不做结构化摘要，但仍有 ACTIVE_LINE_LIMIT 的长度上限；被截断时由
+    `_active_signal_lines()` 把失败信号补回来。
     """
     history = list(history or [])
     raw = _raw_history_text(history)
@@ -391,10 +403,56 @@ def _original_line_for_sort(line, compressed_lines):
     return compressed_lines[-1] if compressed_lines else line
 
 
+def _last_error_line(text):
+    """返回一段文本里最后一条像错误的行。
+
+    取最后一条而不是第一条：pytest 的 `=== 1 failed ===`、traceback 的异常行、
+    编译器的 error summary，信息量最高的那条都在末尾。
+    """
+    found = ""
+    for line in str(text).splitlines():
+        line = line.strip()
+        if line and ERROR_HINT_PATTERN.search(line):
+            found = line
+    return found
+
+
+def _active_signal_lines(item, content):
+    """把被截掉的尾部里的失败信号补回活跃区。
+
+    为什么存在：
+    `_render_history_item()` 保头剪尾，而 shell 的失败摘要通常在输出末尾——
+    一条 4000 字符的 pytest 输出截到 900 字符后，FAILED 行往往正好被剪掉。
+    压缩区有 `_summarize_tool_round()` 提取 signal 作为补偿，活跃区原先没有，
+    于是出现一个反直觉的现象：同一条失败的输出，沉进压缩区反而看得到原因，
+    留在活跃区反而看不到。
+
+    只在**被丢弃的那一段**里找信号，不在全文里找：保留的是开头，全文里的第一条
+    信号几乎总是已经可见的，补回去只会重复占预算。
+
+    输入 / 输出：
+    - 输入：history 条目及其完整正文
+    - 输出：0 或 1 行补充信息；未发生截断、或尾部没有错误迹象时返回空
+
+    在 agent 链路里的位置：
+    它跟在 `_active_zone_lines()` 的逐条渲染之后，是活跃区唯一的信息补偿。
+    """
+    if item.get("role") != "tool":
+        return []
+    if len(content) <= ACTIVE_LINE_LIMIT:
+        return []
+    dropped = content[ACTIVE_LINE_LIMIT - 3:]
+    signal = _last_error_line(dropped)
+    if not signal:
+        return []
+    return ["[truncated-signal] " + json.dumps(_tail_clip(signal, 200))]
+
+
 def _active_zone_lines(items):
     lines = []
     for item in items:
-        lines.extend(_render_history_item(item, 900))
+        lines.extend(_render_history_item(item, ACTIVE_LINE_LIMIT))
+        lines.extend(_active_signal_lines(item, str(item.get("content", ""))))
     return lines
 
 

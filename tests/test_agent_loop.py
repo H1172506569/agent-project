@@ -121,7 +121,13 @@ def test_agent_loop_session_log_projects_run_trace_and_history(tmp_path):
     report = agent.run_store.load_report(state.run_id)
 
     assert project_trace(events) == trace_events
-    assert project_history(events) == agent.session["history"][-3:]
+    projected = project_history(events)
+    assert [
+        {key: value for key, value in item.items() if key != "event_seq"} for item in projected
+    ] == agent.session["history"][-3:]
+    # 每条投影出来的历史都带着它的事件 seq——渲染成 [eN] 给模型看，
+    # 模型提议长期记忆候选时引用的就是它。
+    assert all(isinstance(item["event_seq"], int) for item in projected)
     assert agent.session_log_store.path(agent.session["id"]).exists()
     assert not (agent.run_store.run_dir(state.run_id) / "event_log.jsonl").exists()
     assert report["event_log_metrics"]["event_count"] == len(events)

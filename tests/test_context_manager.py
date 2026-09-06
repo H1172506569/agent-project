@@ -22,27 +22,40 @@ def build_agent(tmp_path, outputs, **kwargs):
 
 def test_context_manager_assembles_sections_in_expected_order(tmp_path):
     agent = build_agent(tmp_path, [])
-    agent.memory.append_note("deploy key is red", tags=("deploy",), created_at="2026-04-07T10:00:00+00:00")
+    agent.memory.promote_durable([("dependency-facts", "deploy key is red")])
     agent.record({"role": "user", "content": "old request", "created_at": "2026-04-07T09:59:00+00:00"})
     agent.record({"role": "assistant", "content": "old answer", "created_at": "2026-04-07T10:00:30+00:00"})
 
     prompt, metadata = ContextManager(agent).build("Where is the deploy key?")
 
-    assert prompt.index("You are repopilot") < prompt.index("Memory:")
+    # 常驻层紧跟 prefix：两者在一次 run 内都稳定，排在一起才能被同一段
+    # 可缓存前缀覆盖；每轮都变的内容全部排在它们之后。
+    assert prompt.index("You are repopilot") < prompt.index("Durable memory:")
+    assert prompt.index("Durable memory:") < prompt.index("Memory:")
     assert prompt.index("Memory:") < prompt.index("Relevant memory:")
     assert prompt.index("Relevant memory:") < prompt.index("Transcript:")
     assert prompt.index("Transcript:") < prompt.index("Current user request:")
     assert prompt.rstrip().endswith("Current user request:\nWhere is the deploy key?")
-    assert metadata["section_order"] == ["prefix", "project_rules", "memory", "relevant_memory", "history", "current_request"]
+    assert metadata["section_order"] == [
+        "prefix",
+        "resident_memory",
+        "project_rules",
+        "memory",
+        "relevant_memory",
+        "history",
+        "current_request",
+    ]
 
 
 def test_context_manager_reduces_relevant_memory_before_history_and_preserves_newer_context(tmp_path):
     agent = build_agent(tmp_path, [])
     agent.prefix = "PREFIX " + ("A" * 600)
     agent.memory.render_memory_text = lambda: "MEMORY " + ("B" * 600)
-    agent.memory.append_note("keep episodic note one " + ("C" * 220), tags=("keep",), created_at="2026-04-07T10:00:00+00:00")
-    agent.memory.append_note("keep episodic note two " + ("D" * 220), tags=("keep",), created_at="2026-04-07T10:01:00+00:00")
-    agent.memory.append_note("keep episodic note three " + ("E" * 220), tags=("keep",), created_at="2026-04-07T10:02:00+00:00")
+    agent.memory.promote_durable([
+        ("dependency-facts", "keep durable note one " + ("C" * 220)),
+        ("dependency-facts", "keep durable note two " + ("D" * 220)),
+        ("dependency-facts", "keep durable note three " + ("E" * 220)),
+    ])
     agent.record({"role": "user", "content": "OLD-CONTEXT " + ("D" * 260), "created_at": "2026-04-07T09:59:00+00:00"})
     for minute in range(1, 8):
         role = "assistant" if minute % 2 == 1 else "user"
@@ -73,19 +86,29 @@ def test_context_manager_reduces_relevant_memory_before_history_and_preserves_ne
     assert "keep this request verbatim" in prompt
 
 
-def test_context_manager_renders_top_three_episodic_notes_per_note_under_budget(tmp_path):
+def test_context_manager_renders_top_three_durable_notes_per_note_under_budget(tmp_path):
+    """检索层最多选 3 条，并在预算内逐条渲染。
+
+    同分候选按写入顺序排列：durable 笔记的 created_at 来自 topic 文件的
+    updated_at，同一 topic 内没有逐条时间戳可比，排序只能是稳定的写入顺序。
+    """
     agent = build_agent(tmp_path, [])
-    agent.memory.append_note("alpha episodic note " + ("A" * 120), tags=("recall",), created_at="2026-04-07T10:00:00+00:00")
-    agent.memory.append_note("beta episodic recall note " + ("B" * 120), created_at="2026-04-07T10:01:00+00:00")
-    agent.memory.append_note("gamma episodic note " + ("C" * 120), tags=("recall",), created_at="2026-04-07T10:02:00+00:00")
-    agent.memory.append_note("older unmatched note", created_at="2026-04-07T09:59:00+00:00")
-    agent.memory.append_note("Unrelated note", created_at="2026-04-07T11:00:00+00:00")
+    agent.memory.promote_durable([
+        ("dependency-facts", "alpha recall note " + ("A" * 120)),
+        ("dependency-facts", "beta recall note " + ("B" * 120)),
+        ("dependency-facts", "gamma recall note " + ("C" * 120)),
+        ("dependency-facts", "older unmatched note"),
+        ("dependency-facts", "Unrelated note"),
+    ])
 
     prompt, metadata = ContextManager(
         agent,
-        total_budget=250,
+        # 常驻层独立成段后，prompt 多出一段固定开销；这里给总预算补上，
+        # 免得触发裁剪——这个测试要验的是 relevant_memory 的逐条渲染。
+        total_budget=300,
         section_budgets={
             "prefix": 60,
+            "resident_memory": 40,
             "memory": 60,
             "relevant_memory": 80,
             "history": 60,
@@ -95,20 +118,20 @@ def test_context_manager_renders_top_three_episodic_notes_per_note_under_budget(
     assert metadata["relevant_memory"]["selected_count"] == 3
     assert metadata["relevant_memory"]["limit"] == 3
     assert metadata["relevant_memory"]["selected_notes"] == [
-        "gamma episodic note " + ("C" * 120),
-        "alpha episodic note " + ("A" * 120),
-        "beta episodic recall note " + ("B" * 120),
+        "alpha recall note " + ("A" * 120),
+        "beta recall note " + ("B" * 120),
+        "gamma recall note " + ("C" * 120),
     ]
     assert len(metadata["relevant_memory"]["rendered_notes"]) == 3
     assert metadata["relevant_memory"]["rendered_count"] == 3
-    assert metadata["relevant_memory"]["rendered_notes"][0].startswith("gamma episodi")
-    assert metadata["relevant_memory"]["rendered_notes"][1].startswith("alpha episodi")
-    assert metadata["relevant_memory"]["rendered_notes"][2].startswith("beta episodi")
+    assert metadata["relevant_memory"]["rendered_notes"][0].startswith("alpha recall")
+    assert metadata["relevant_memory"]["rendered_notes"][1].startswith("beta recall")
+    assert metadata["relevant_memory"]["rendered_notes"][2].startswith("gamma recall")
     relevant_section = prompt.split("Relevant memory:\n", 1)[1].split("\n\nTranscript:", 1)[0]
     assert len([line for line in relevant_section.splitlines() if line.startswith("- ")]) == 3
-    assert "alpha episodi" in relevant_section
-    assert "beta episodic" in relevant_section
-    assert "gamma episodi" in relevant_section
+    assert "alpha recall" in relevant_section
+    assert "beta recall" in relevant_section
+    assert "gamma recall" in relevant_section
     assert "older unmatched note" not in relevant_section
 
 
@@ -211,6 +234,45 @@ def test_context_manager_relevant_memory_can_mix_durable_notes(tmp_path):
     topics_dir.mkdir(parents=True)
     (memory_root / "MEMORY.md").write_text(
         "# Durable Memory Index\n\n"
+        "- [dependency-facts](topics/dependency-facts.md): Dependency Facts\n"
+        "  - summary: Stable dependency and environment facts.\n"
+        "  - tags: dependency\n",
+        encoding="utf-8",
+    )
+    (topics_dir / "dependency-facts.md").write_text(
+        "# Dependency Facts\n\n"
+        "- topic: dependency-facts\n"
+        "- summary: Stable dependency and environment facts.\n"
+        "- tags: dependency\n"
+        "- updated_at: 2026-04-12T08:14:49+00:00\n\n"
+        "## Notes\n"
+        "- Project verification runs with pytest.\n",
+        encoding="utf-8",
+    )
+
+    agent = build_agent(tmp_path, [])
+
+    prompt, metadata = ContextManager(agent).build("How do I run pytest verification?")
+    relevant_section = prompt.split("Relevant memory:\n", 1)[1].split("\n\nTranscript:", 1)[0]
+
+    assert "Project verification runs with pytest." in relevant_section
+    assert any("Project verification runs with pytest." in item for item in metadata["relevant_memory"]["selected_notes"])
+    assert metadata["relevant_memory"]["selected_durable_count"] == 1
+    assert metadata["relevant_memory"]["selected_sources"] == ["dependency-facts"]
+    assert metadata["relevant_memory"]["selected_kinds"] == ["durable"]
+
+
+def test_context_manager_resident_durable_notes_bypass_retrieval(tmp_path):
+    """常驻层不参与检索，而是整体进 Memory 段。
+
+    它装的是无锚点的记忆：用户 query 里没有任何 token 能召回“以后都用中文解释”，
+    所以检索对这类记忆结构性失效，只能每轮常驻。
+    """
+    memory_root = tmp_path / ".repopilot" / "memory"
+    topics_dir = memory_root / "topics"
+    topics_dir.mkdir(parents=True)
+    (memory_root / "MEMORY.md").write_text(
+        "# Durable Memory Index\n\n"
         "- [project-conventions](topics/project-conventions.md): Project Conventions\n"
         "  - summary: Stable repository conventions.\n"
         "  - tags: convention\n",
@@ -229,14 +291,13 @@ def test_context_manager_relevant_memory_can_mix_durable_notes(tmp_path):
 
     agent = build_agent(tmp_path, [])
 
-    prompt, metadata = ContextManager(agent).build("What conventions should I follow?")
-    relevant_section = prompt.split("Relevant memory:\n", 1)[1].split("\n\nTranscript:", 1)[0]
+    # 一个和这条约定毫无词面重叠的问题：检索必然召不回，常驻层却必须在。
+    prompt, metadata = ContextManager(agent).build("Rename the helper in utils.py")
 
-    assert "Use constrained tools instead of guessing." in relevant_section
-    assert any("Use constrained tools instead of guessing." in item for item in metadata["relevant_memory"]["selected_notes"])
-    assert metadata["relevant_memory"]["selected_durable_count"] == 1
-    assert metadata["relevant_memory"]["selected_sources"] == ["project-conventions"]
-    assert metadata["relevant_memory"]["selected_kinds"] == ["durable"]
+    resident_section = prompt.split("Durable memory:\n", 1)[1].split("\n\n", 1)[0]
+    assert "Use constrained tools instead of guessing." in resident_section
+    assert metadata["sections"]["resident_memory"]["rendered_chars"] > 0
+    assert metadata["relevant_memory"]["selected_durable_count"] == 0
 
 
 def test_context_manager_injects_only_path_matched_project_rules(tmp_path):
@@ -287,3 +348,21 @@ def test_context_manager_project_rules_can_match_recent_tool_history(tmp_path):
     assert "Tests should use FakeModelClient and avoid network." in prompt
     assert metadata["project_rules"]["candidate_paths"] == ["tests/test_agent_loop.py"]
     assert metadata["project_rules"]["matched_count"] == 1
+
+
+def test_prefix_clipping_keeps_checkpoint_and_drops_static_rules(tmp_path):
+    """prefix 超预算时先砍工作手册，不砍 resume 状态。
+
+    checkpoint 拼在 prefix 段尾部，而裁剪砍的就是尾巴——不特殊处理的话，
+    只要 prefix 一超预算，第一个丢掉的永远是“上次做到哪”。
+    """
+    agent = build_agent(tmp_path, [])
+    agent.prefix = "STATIC-RULES " + ("A" * 900)
+    agent.render_checkpoint_text = lambda: "Task checkpoint:\nNext step: re-read runtime.py"
+
+    prompt, metadata = ContextManager(agent, section_budgets={"prefix": 300}).build("Continue")
+
+    assert "Task checkpoint:" in prompt
+    assert "Next step: re-read runtime.py" in prompt
+    assert "STATIC-RULES" in prompt
+    assert metadata["sections"]["prefix"]["rendered_chars"] <= 300

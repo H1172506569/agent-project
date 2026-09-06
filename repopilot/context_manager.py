@@ -16,6 +16,7 @@ from .rules import RuleResolver
 DEFAULT_TOTAL_BUDGET = 12000
 DEFAULT_SECTION_BUDGETS = {
     "prefix": 3600,
+    "resident_memory": 1600,
     "project_rules": 800,
     "memory": 1600,
     "relevant_memory": 1200,
@@ -23,14 +24,40 @@ DEFAULT_SECTION_BUDGETS = {
 }
 DEFAULT_SECTION_FLOORS = {
     "prefix": 1200,
+    "resident_memory": 400,
     "project_rules": 200,
     "memory": 400,
     "relevant_memory": 300,
     "history": 1500,
 }
-# 当 prompt 超预算时，会优先压缩这些 section。
-DEFAULT_REDUCTION_ORDER = ("relevant_memory", "project_rules", "history", "memory", "prefix")
-SECTION_ORDER = ("prefix", "project_rules", "memory", "relevant_memory", "history", "current_request")
+# 当 prompt 超预算时，会按这个顺序压缩。顺序反映的是「每个字符值多少」：
+# 1. relevant_memory：长尾、query 相关，模型可以靠重新读文件拿回来。
+# 2. history：最大的一段，而且有 compression 这条比硬裁剪体面得多的降级路径，
+#    floor 保住最近几轮。
+# 3. memory：工作集，本身就是 history 的派生物，砍了还能从 history 重建。
+# 4. project_rules：用户手写的硬约束，而且很小，砍它省不下多少。
+# 5. resident_memory：本轮没有任何别的通道能带它，砍掉就是彻底消失；上限只有
+#    1500 字符，省下来的收益和「用户偏好这轮直接失效」不成比例。
+# 6. prefix：砍它会破坏工具定义，模型可能直接不会调工具了。
+DEFAULT_REDUCTION_ORDER = (
+    "relevant_memory",
+    "history",
+    "memory",
+    "project_rules",
+    "resident_memory",
+    "prefix",
+)
+# 顺序是刻意的：prefix 和 resident_memory 在一次 run 内都稳定，排在最前面，
+# 可缓存前缀才能把两段一起包进去。它们后面才是每轮都变的内容。
+SECTION_ORDER = (
+    "prefix",
+    "resident_memory",
+    "project_rules",
+    "memory",
+    "relevant_memory",
+    "history",
+    "current_request",
+)
 CURRENT_REQUEST_SECTION = "current_request"
 RELEVANT_MEMORY_LIMIT = 3
 
@@ -111,8 +138,12 @@ class ContextManager:
             relevant_memory_enabled = self.agent.feature_enabled("relevant_memory")
             context_reduction_enabled = self.agent.feature_enabled("context_reduction")
         rule_context = self._resolve_project_rules(user_message)
+        resident_text = "Durable memory:\n- disabled"
+        if memory_enabled and hasattr(self.agent, "resident_memory_text"):
+            resident_text = str(self.agent.resident_memory_text())
         section_texts = {
             "prefix": str(getattr(self.agent, "prefix", "")),
+            "resident_memory": resident_text,
             "project_rules": rule_context.render(),
             "memory": "Memory:\n- disabled" if not memory_enabled else str(self.agent.memory_text()),
             "history": "",
@@ -122,8 +153,10 @@ class ContextManager:
         checkpoint_text = ""
         if hasattr(self.agent, "render_checkpoint_text"):
             checkpoint_text = str(self.agent.render_checkpoint_text() or "").strip()
-        if checkpoint_text:
-            section_texts["prefix"] = section_texts["prefix"] + "\n\n" + checkpoint_text
+        # checkpoint 单独存：它拼在 prefix 段尾部，而裁剪是砍尾巴，所以只要
+        # prefix 超预算，第一个被丢的就永远是 resume 状态。静态规则文本可以截，
+        # “从哪儿接着做”不能——见 `_render_prefix()`。
+        section_texts["_checkpoint"] = checkpoint_text
         selected_notes = []
         if memory_enabled and relevant_memory_enabled and hasattr(self.agent, "memory") and hasattr(self.agent.memory, "retrieval_candidates"):
             selected_notes = self.agent.memory.retrieval_candidates(user_message, limit=RELEVANT_MEMORY_LIMIT)
@@ -189,6 +222,33 @@ class ContextManager:
         )
         return prompt, metadata
 
+    @staticmethod
+    def _prefix_raw(section_texts):
+        checkpoint = str(section_texts.get("_checkpoint", "") or "")
+        prefix = section_texts["prefix"]
+        return prefix + "\n\n" + checkpoint if checkpoint else prefix
+
+    def _render_prefix(self, section_texts, budget):
+        """裁剪 prefix 时保住 checkpoint，砍掉的是静态规则文本。
+
+        checkpoint 说的是“上一次做到哪、下一步该做什么”，每个字符都比工作手册的
+        样板文字值钱；而它恰好拼在段尾，正是 `_tail_clip` 第一个丢掉的位置。
+        """
+        checkpoint = str(section_texts.get("_checkpoint", "") or "")
+        static = section_texts["prefix"]
+        raw = self._prefix_raw(section_texts)
+        if budget is None:
+            return SectionRender(raw=raw, budget=0, rendered=raw, details={})
+        budget = int(budget)
+        if len(raw) <= budget:
+            return SectionRender(raw=raw, budget=budget, rendered=raw, details={})
+        reserve = len(checkpoint) + 2 if checkpoint else 0
+        if not checkpoint or reserve >= budget:
+            # checkpoint 自己就超预算，退回整体截断，没有更好的选择。
+            return SectionRender(raw=raw, budget=budget, rendered=_tail_clip(raw, budget), details={})
+        head = _tail_clip(static, budget - reserve)
+        return SectionRender(raw=raw, budget=budget, rendered=head + "\n\n" + checkpoint, details={})
+
     def _render_sections_without_reduction(self, section_texts, selected_notes=None):
         selected_notes = selected_notes or []
         relevant_lines = ["Relevant memory:"]
@@ -200,7 +260,13 @@ class ContextManager:
         history = self._history_items()
         history_raw = self._raw_history_text(history)
         return {
-            "prefix": SectionRender(raw=section_texts["prefix"], budget=len(section_texts["prefix"]), rendered=section_texts["prefix"], details={}),
+            "prefix": self._render_prefix(section_texts, None),
+            "resident_memory": SectionRender(
+                raw=section_texts["resident_memory"],
+                budget=len(section_texts["resident_memory"]),
+                rendered=section_texts["resident_memory"],
+                details={},
+            ),
             "project_rules": SectionRender(
                 raw=section_texts["project_rules"],
                 budget=len(section_texts["project_rules"]),
@@ -244,6 +310,10 @@ class ContextManager:
             if section == CURRENT_REQUEST_SECTION:
                 raw = section_texts[section]
                 rendered[section] = SectionRender(raw=raw, budget=0, rendered=raw, details={})
+            elif section == "prefix":
+                rendered[section] = self._render_prefix(section_texts, budget)
+            elif section == "resident_memory":
+                rendered[section] = self._render_resident_memory(section_texts[section], int(budget or 0))
             elif section == "relevant_memory":
                 rendered[section] = self._render_relevant_memory(selected_notes or [], int(budget or 0))
             elif section == "history":
@@ -290,6 +360,26 @@ class ContextManager:
         if hasattr(self.agent, "history_source"):
             return str(self.agent.history_source())
         return "session"
+
+    def _render_resident_memory(self, raw, budget):
+        """按整条笔记裁剪，而不是按字符截断。
+
+        这一段每条都是一句完整的约束（“以后都用中文解释”）。从中间截断会留下
+        一句半截的指令，比整条丢掉更糟——模型会照着残句执行。
+        """
+        lines = str(raw).splitlines() or ["Durable memory:"]
+        header, notes = lines[0], lines[1:]
+        if budget <= 0 or len(raw) <= budget:
+            return SectionRender(raw=raw, budget=budget, rendered=raw, details={"rendered_count": len(notes)})
+        kept = []
+        used = len(header)
+        for note in notes:
+            if used + 1 + len(note) > budget:
+                break
+            used += 1 + len(note)
+            kept.append(note)
+        rendered = "\n".join([header, *kept]) if kept else header
+        return SectionRender(raw=raw, budget=budget, rendered=rendered, details={"rendered_count": len(kept)})
 
     def _render_relevant_memory(self, selected_notes, budget):
         header = "Relevant memory:"
@@ -545,25 +635,38 @@ class ContextManager:
             return "Transcript:\n- empty"
         lines = []
         for item in history:
+            tag = self._event_tag(item)
             if item["role"] == "tool":
-                lines.append(f"[tool:{item['name']}] {json.dumps(item['args'], sort_keys=True)}")
+                lines.append(f"{tag}[tool:{item['name']}] {json.dumps(item['args'], sort_keys=True)}")
                 lines.append(str(item["content"]))
             else:
-                lines.append(f"[{item['role']}] {item['content']}")
+                lines.append(f"{tag}[{item['role']}] {item['content']}")
         return "\n".join(["Transcript:", *lines])
 
+    @staticmethod
+    def _event_tag(item):
+        """渲染给模型看的事件编号。
+
+        模型提议长期记忆候选时要引用证据，引用的就是这个编号。没有 seq 的旧
+        session（回退到 session["history"]）就不渲染，模型自然也无从引用。
+        """
+        seq = item.get("event_seq")
+        return "" if seq is None else f"[e{int(seq)}] "
+
     def _render_history_item(self, item, line_limit):
+        tag = self._event_tag(item)
         if item["role"] == "tool":
-            prefix = f"[tool:{item['name']}] {json.dumps(item['args'], sort_keys=True)}"
+            prefix = f"{tag}[tool:{item['name']}] {json.dumps(item['args'], sort_keys=True)}"
             content = _tail_clip(item["content"], max(20, line_limit))
             return [prefix, content]
-        return [f"[{item['role']}] {_tail_clip(item['content'], line_limit)}"]
+        return [f"{tag}[{item['role']}] {_tail_clip(item['content'], line_limit)}"]
 
     def _assemble_prompt(self, rendered):
         # 顺序是刻意设计的：稳定规则放前面，最新请求放最后。
         return "\n\n".join(
             [
                 rendered["prefix"].rendered,
+                rendered["resident_memory"].rendered,
                 rendered["project_rules"].rendered,
                 rendered["memory"].rendered,
                 rendered["relevant_memory"].rendered,
@@ -611,9 +714,9 @@ class ContextManager:
                 "selected_count": len(selected_notes),
                 "selected_notes": [note["text"] for note in selected_notes],
                 "selected_sources": [str(note.get("source", "")).strip() for note in selected_notes],
-                "selected_kinds": [str(note.get("kind", "episodic")).strip() or "episodic" for note in selected_notes],
+                "selected_kinds": [str(note.get("kind", "durable")).strip() or "durable" for note in selected_notes],
                 "selected_durable_count": sum(
-                    1 for note in selected_notes if (str(note.get("kind", "episodic")).strip() or "episodic") == "durable"
+                    1 for note in selected_notes if (str(note.get("kind", "durable")).strip() or "durable") == "durable"
                 ),
                 "raw_chars": rendered["relevant_memory"].raw_chars,
                 "rendered_chars": rendered["relevant_memory"].rendered_chars,
